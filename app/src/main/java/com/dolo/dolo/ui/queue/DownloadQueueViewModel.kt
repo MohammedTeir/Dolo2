@@ -68,4 +68,10 @@ class DownloadQueueViewModel @Inject constructor(
             downloadRepository.moveDownloadDown(id)
         }
     }
+
+    fun setSpeedLimit(id: String, limitKbps: Int?) {
+        viewModelScope.launch {
+            downloadRepository.setSpeedLimit(id, limitKbps)
+        }
+    }
 }

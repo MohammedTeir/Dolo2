@@ -57,12 +57,23 @@ object DownloadRequestBuilder {
         // External downloader (aria2c) for multi-connection download
         request.addOption("--external-downloader", "aria2c")
         val connections = params.connectionsPerDownload.coerceIn(1, 16)
-        request.addOption("--external-downloader-args", "aria2c:-x $connections -s $connections -k 1M")
+        
+        val ariaArgs = StringBuilder("aria2c:-x $connections -s $connections -k 1M")
+        if (params.speedLimitKbps != null && params.speedLimitKbps > 0) {
+            ariaArgs.append(" --max-overall-download-limit=${params.speedLimitKbps}K")
+        }
+        request.addOption("--external-downloader-args", ariaArgs.toString())
 
         // Metadata embedding
         if (params.embedMetadata) {
             request.addOption("--add-metadata")
             request.addOption("--embed-thumbnail")
+        }
+
+        // Subtitles
+        if (!params.selectedSubtitleLanguage.isNullOrBlank()) {
+            request.addOption("--write-subs")
+            request.addOption("--sub-langs", params.selectedSubtitleLanguage)
         }
 
         // Compatibility & warning suppression flags

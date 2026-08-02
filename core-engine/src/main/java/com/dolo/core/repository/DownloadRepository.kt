@@ -98,6 +98,12 @@ class DownloadRepository @Inject constructor(
         }
     }
 
+    suspend fun setSpeedLimit(id: String, limitKbps: Int?) {
+        downloadDao.updateSpeedLimit(id, limitKbps)
+        // If it's currently downloading, we might want to restart it to apply.
+        // For simplicity, we'll let it apply on next resume/start.
+    }
+
     fun hasEnoughStorageSpace(path: String, requiredBytes: Long): Boolean {
         return StorageChecker.hasEnoughSpace(path, requiredBytes)
     }

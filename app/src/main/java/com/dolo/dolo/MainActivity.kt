@@ -152,7 +152,14 @@ class MainActivity : ComponentActivity() {
                         }
 
                         composable("settings_about") {
-                            AboutScreen(onBack = { navController.popBackStack() })
+                            AboutScreen(
+                                onBack = { navController.popBackStack() },
+                                onNavigateToLicenses = { navController.navigate("settings_licenses") }
+                            )
+                        }
+
+                        composable("settings_licenses") {
+                            com.dolo.dolo.ui.settings.LicensesScreen(onBack = { navController.popBackStack() })
                         }
                     }
                 }

@@ -18,6 +18,7 @@ import com.dolo.core.db.LibraryItemEntity
 import com.dolo.core.engine.DownloadRequestBuilder
 import com.dolo.core.model.DownloadParams
 import com.dolo.core.repository.SettingsRepository
+import com.dolo.core.util.StorageResolver
 import com.yausername.youtubedl_android.YoutubeDL
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.CoroutineScope
@@ -177,23 +178,27 @@ class DownloadService : Service() {
             downloadDao.updateStatus(download.id, "DOWNLOADING")
             updateNotification(title = title, text = "Starting...", progress = 0f, downloadId = download.id)
 
-            val outputDir = download.filePath?.let { File(it).parent } ?: cacheDir.absolutePath
-            val outputDirFile = File(outputDir)
-            if (!outputDirFile.exists()) outputDirFile.mkdirs()
+            // Always download to cache first for SAF support and stability
+            val tempDir = File(cacheDir, "downloads")
+            if (!tempDir.exists()) tempDir.mkdirs()
+            
+            val fileName = download.filePath?.let { File(it).name } ?: "download_${System.currentTimeMillis()}.mp4"
 
             val params = DownloadParams(
                 id = download.id,
                 url = download.url,
                 formatId = download.formatId,
-                outputDir = outputDir,
-                fileName = download.filePath?.let { File(it).name },
+                outputDir = tempDir.absolutePath,
+                fileName = fileName,
                 isAudioOnly = download.isAudioOnly,
                 audioFormat = download.audioFormat,
                 audioBitrate = download.audioBitrate,
                 trimStartSeconds = download.trimStartSeconds,
                 trimEndSeconds = download.trimEndSeconds,
                 useCookies = download.useCookies,
-                connectionsPerDownload = settingsRepository.connectionsPerDownload.first()
+                cookiesPath = settingsRepository.cookiesFilePath.first(),
+                connectionsPerDownload = settingsRepository.connectionsPerDownload.first(),
+                speedLimitKbps = settingsRepository.globalSpeedLimitKbps.first()
             )
 
             val request = DownloadRequestBuilder.buildRequest(params)
@@ -208,23 +213,29 @@ class DownloadService : Service() {
             }
 
             // Download complete
+            val downloadedFile = File(tempDir, fileName)
+            if (!downloadedFile.exists()) throw Exception("Downloaded file not found")
+
+            // Move to final destination
+            val destUri = settingsRepository.downloadLocationUri.first()
+            val finalPath = StorageResolver.moveToDestination(applicationContext, downloadedFile, destUri, fileName)
+            
             downloadDao.updateStatus(download.id, "COMPLETED")
-            val completedFile = File(outputDir, params.fileName ?: "download.mp4")
 
             val libraryItem = LibraryItemEntity(
                 id = download.id,
                 sourceUrl = download.url,
                 title = title,
-                filePath = completedFile.absolutePath,
-                fileSizeBytes = if (completedFile.exists()) completedFile.length() else 0L,
+                filePath = finalPath ?: downloadedFile.absolutePath,
+                fileSizeBytes = downloadedFile.length(), // This might be 0 if moved, but StorageResolver handles it
                 isAudio = download.isAudioOnly
             )
             libraryItemDao.insertLibraryItem(libraryItem)
             updateNotification(title = title, text = "Download complete", progress = 100f, downloadId = download.id)
             
         } catch (e: Exception) {
-            if (downloadDao.getDownloadById(download.id)?.status != "PAUSED" && 
-                downloadDao.getDownloadById(download.id)?.status != "CANCELLED") {
+            val status = downloadDao.getDownloadById(download.id)?.status
+            if (status != "PAUSED" && status != "CANCELLED") {
                 val errorMsg = e.localizedMessage ?: "Unknown error"
                 downloadDao.updateStatus(download.id, "FAILED", errorMessage = errorMsg)
                 updateNotification(title = title, text = "Failed: $errorMsg", progress = 0f, downloadId = download.id)

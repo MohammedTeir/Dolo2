@@ -31,5 +31,6 @@ data class DownloadEntity(
     val playlistId: String? = null,
     val playlistIndex: Int? = null,
     val priority: Int = 0,
-    val downloadSpeedBytes: Long = 0L
+    val downloadSpeedBytes: Long = 0L,
+    val speedLimitKbps: Int? = null
 )

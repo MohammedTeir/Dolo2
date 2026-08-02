@@ -1,20 +1,18 @@
-# Task List - Phase 5 Polish & Fixes
+# Task List - SPEC Full Implementation & Polish
 
-- [ ] Update `SettingsRepository`
-    - [ ] Add `downloadLocationUri` and `downloadLocationName` keys
-- [ ] Create `SettingsComponents.kt`
-    - [ ] Extract reusable UI elements (Switch, Radio, Slider)
-- [ ] Implement Live Theme Switching
-    - [ ] Update `MainActivity.kt` to observe and apply theme
-- [ ] Polish Settings Screens
-    - [ ] Update `DownloadSettingsScreen.kt`: Add SAF Folder Picker and Speed Limit Slider
-    - [ ] Update `EngineSettingsScreen.kt`: Add Cookies File Picker and Update Engine Trigger
-    - [ ] Update `AboutScreen.kt`: Add App Update Trigger
-    - [ ] Update `AudioSettingsScreen.kt`: Use centralized components
-    - [ ] Update `GeneralSettingsScreen.kt`: Use centralized components
-- [ ] Smart Features Logic
-    - [ ] Implement actual clipboard check in `HomeScreen.kt`
-- [ ] Verification
-    - [ ] Verify theme switches instantly
-    - [ ] Verify custom save location works
-    - [ ] Verify cookies import persists
+- [x] Core Engine Enhancements
+    - [x] Update `VideoMetadata` & `YtDlpExtractor` for Subtitles
+    - [x] Update `DownloadService` logic (Settings application, SAF path resolution)
+- [x] Implement Missing Tabs
+    - [x] Create `BrowserScreen` (WebView + Interceptor)
+    - [x] Create `SearchScreen` (ytsearch integration)
+    - [x] Update `MainScreen` Navigation (Tabs: Home, Browser, Search, Queue, Library, Settings)
+- [x] UI Polish
+    - [x] Add Subtitle selection to `FormatPickerSheet`
+    - [x] Add Per-item speed limit to `DownloadQueueScreen`
+    - [x] Upgrade `VaultScreen` UI
+- [x] Compliance & Legal
+    - [x] Create `LicensesScreen`
+    - [x] Wire to `AboutScreen`
+- [ ] Final Verification
+    - [ ] End-to-end check of all features

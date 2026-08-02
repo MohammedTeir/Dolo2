@@ -8,6 +8,7 @@ data class VideoMetadata(
     val durationSeconds: Int,
     val description: String?,
     val formats: List<FormatInfo>,
+    val subtitles: List<SubtitleInfo> = emptyList(),
     val originalUrl: String,
     val isPlaylist: Boolean = false,
     val playlistCount: Int = 0

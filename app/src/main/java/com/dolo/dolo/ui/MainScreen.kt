@@ -12,10 +12,14 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.filled.Language
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.VideoLibrary
 import androidx.compose.material.icons.outlined.Download
 import androidx.compose.material.icons.outlined.Home
+import androidx.compose.material.icons.outlined.Language
+import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material.icons.outlined.VideoLibrary
 import androidx.compose.material3.*
@@ -40,6 +44,8 @@ enum class NavigationTab(
     val unselectedIcon: ImageVector
 ) {
     HOME("Home", Icons.Filled.Home, Icons.Outlined.Home),
+    BROWSER("Browser", Icons.Filled.Language, Icons.Outlined.Language),
+    SEARCH("Search", Icons.Filled.Search, Icons.Outlined.Search),
     QUEUE("Downloads", Icons.Filled.Download, Icons.Outlined.Download),
     LIBRARY("Library", Icons.Filled.VideoLibrary, Icons.Outlined.VideoLibrary),
     SETTINGS("Settings", Icons.Filled.Settings, Icons.Outlined.Settings)
@@ -102,6 +108,20 @@ fun MainScreen(
                 NavigationTab.HOME -> {
                     HomeScreen(
                         sharedUrl = sharedUrl,
+                        viewModel = homeViewModel
+                    )
+                }
+                NavigationTab.BROWSER -> {
+                    com.dolo.dolo.ui.home.BrowserScreen(
+                        interceptor = dagger.hilt.android.EntryPointAccessors.fromApplication(
+                            androidx.compose.ui.platform.LocalContext.current.applicationContext,
+                            com.dolo.core.engine.WebDownloadInterceptorEntryPoint::class.java
+                        )!!.interceptor()
+                    )
+                }
+                NavigationTab.SEARCH -> {
+                    com.dolo.dolo.ui.home.SearchScreen(
+                        onResultClick = { homeViewModel.onUrlChanged(it); homeViewModel.extractInfo(it) },
                         viewModel = homeViewModel
                     )
                 }

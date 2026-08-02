@@ -2,38 +2,15 @@ package com.dolo.dolo.ui.queue
 
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowDownward
-import androidx.compose.material.icons.filled.ArrowUpward
-import androidx.compose.material.icons.filled.Cancel
-import androidx.compose.material.icons.filled.CloudDownload
-import androidx.compose.material.icons.filled.Error
-import androidx.compose.material.icons.filled.HourglassTop
-import androidx.compose.material.icons.filled.Pause
-import androidx.compose.material.icons.filled.PlayArrow
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.LinearProgressIndicator
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
+import androidx.compose.material.icons.automirrored.filled.*
+import androidx.compose.material.icons.filled.*
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -73,7 +50,8 @@ fun DownloadQueueScreen(
                         download = download,
                         onCancel = { viewModel.cancelDownload(download.id) },
                         onPause = { viewModel.pauseDownload(download.id) },
-                        onResume = { viewModel.resumeDownload(download.id) }
+                        onResume = { viewModel.resumeDownload(download.id) },
+                        onSetSpeedLimit = { viewModel.setSpeedLimit(download.id, it) }
                     )
                 }
             }
@@ -123,7 +101,6 @@ fun DownloadQueueScreen(
                 }
             }
 
-            // Bottom spacing
             item { Spacer(modifier = Modifier.height(16.dp)) }
         }
     }
@@ -159,7 +136,8 @@ private fun DownloadQueueItem(
     onPause: () -> Unit = {},
     onResume: () -> Unit = {},
     onMoveUp: () -> Unit = {},
-    onMoveDown: () -> Unit = {}
+    onMoveDown: () -> Unit = {},
+    onSetSpeedLimit: (Int?) -> Unit = {}
 ) {
     val animatedProgress by animateFloatAsState(
         targetValue = download.progress / 100f,
@@ -167,21 +145,7 @@ private fun DownloadQueueItem(
         label = "progress"
     )
 
-    val statusColor = when (download.status) {
-        "DOWNLOADING" -> MaterialTheme.colorScheme.primary
-        "PAUSED" -> MaterialTheme.colorScheme.tertiary
-        "QUEUED" -> MaterialTheme.colorScheme.onSurfaceVariant
-        "FAILED" -> MaterialTheme.colorScheme.error
-        else -> MaterialTheme.colorScheme.onSurfaceVariant
-    }
-
-    val statusIcon = when (download.status) {
-        "DOWNLOADING" -> Icons.Default.CloudDownload
-        "PAUSED" -> Icons.Default.Pause
-        "QUEUED" -> Icons.Default.HourglassTop
-        "FAILED" -> Icons.Default.Error
-        else -> Icons.Default.CloudDownload
-    }
+    var showSpeedMenu by remember { mutableStateOf(false) }
 
     Card(
         modifier = Modifier.fillMaxWidth(),
@@ -199,6 +163,21 @@ private fun DownloadQueueItem(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically
             ) {
+                val statusIcon = when (download.status) {
+                    "DOWNLOADING" -> Icons.Default.CloudDownload
+                    "PAUSED" -> Icons.Default.Pause
+                    "QUEUED" -> Icons.Default.HourglassTop
+                    "FAILED" -> Icons.Default.Error
+                    else -> Icons.Default.CloudDownload
+                }
+                val statusColor = when (download.status) {
+                    "DOWNLOADING" -> MaterialTheme.colorScheme.primary
+                    "PAUSED" -> MaterialTheme.colorScheme.tertiary
+                    "QUEUED" -> MaterialTheme.colorScheme.onSurfaceVariant
+                    "FAILED" -> MaterialTheme.colorScheme.error
+                    else -> MaterialTheme.colorScheme.onSurfaceVariant
+                }
+
                 Icon(
                     imageVector = statusIcon,
                     contentDescription = download.status,
@@ -220,27 +199,27 @@ private fun DownloadQueueItem(
 
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Text(
-                            text = download.status.lowercase()
-                                .replaceFirstChar { it.uppercase() },
+                            text = download.status.lowercase().replaceFirstChar { it.uppercase() },
                             style = MaterialTheme.typography.bodySmall,
                             color = statusColor
                         )
 
-                        if (download.status == "DOWNLOADING" && download.progress > 0f) {
-                            Text(
-                                text = " · ${download.progress.toInt()}%",
-                                style = MaterialTheme.typography.bodySmall,
-                                fontWeight = FontWeight.SemiBold,
-                                color = MaterialTheme.colorScheme.primary
-                            )
-                        }
-
-                        if (download.isAudioOnly) {
-                            Text(
-                                text = " · ${(download.audioFormat ?: "audio").uppercase()}",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
+                        if (download.status == "DOWNLOADING") {
+                            if (download.progress > 0f) {
+                                Text(
+                                    text = " · ${download.progress.toInt()}%",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = MaterialTheme.colorScheme.primary
+                                )
+                            }
+                            if (download.downloadSpeedBytes > 0) {
+                                Text(
+                                    text = " · ${formatSpeed(download.downloadSpeedBytes)}",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.secondary
+                                )
+                            }
                         }
                     }
                 }
@@ -248,67 +227,59 @@ private fun DownloadQueueItem(
                 // Actions
                 Row {
                     if (download.status == "DOWNLOADING") {
+                        Box {
+                            IconButton(onClick = { showSpeedMenu = true }) {
+                                Icon(
+                                    imageVector = Icons.Default.Speed,
+                                    contentDescription = "Speed Limit",
+                                    tint = if (download.speedLimitKbps != null) MaterialTheme.colorScheme.primary 
+                                           else MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                            DropdownMenu(expanded = showSpeedMenu, onDismissRequest = { showSpeedMenu = false }) {
+                                DropdownMenuItem(text = { Text("Unlimited") }, onClick = { onSetSpeedLimit(null); showSpeedMenu = false })
+                                listOf(512, 1024, 2048, 5120).forEach { limit ->
+                                    DropdownMenuItem(
+                                        text = { Text("${limit / 1024} MB/s") },
+                                        onClick = { onSetSpeedLimit(limit); showSpeedMenu = false }
+                                    )
+                                }
+                            }
+                        }
                         IconButton(onClick = onPause) {
-                            Icon(
-                                imageVector = Icons.Default.Pause,
-                                contentDescription = "Pause",
-                                tint = MaterialTheme.colorScheme.primary
-                            )
+                            Icon(Icons.Default.Pause, contentDescription = "Pause", tint = MaterialTheme.colorScheme.primary)
                         }
                     } else if (download.status == "PAUSED" || download.status == "QUEUED") {
                         IconButton(onClick = onResume) {
-                            Icon(
-                                imageVector = Icons.Default.PlayArrow,
-                                contentDescription = "Resume",
-                                tint = MaterialTheme.colorScheme.primary
-                            )
+                            Icon(Icons.Default.PlayArrow, contentDescription = "Resume", tint = MaterialTheme.colorScheme.primary)
                         }
                     }
 
                     if (download.status == "QUEUED") {
                         IconButton(onClick = onMoveUp) {
-                            Icon(
-                                imageVector = Icons.Default.ArrowUpward,
-                                contentDescription = "Move Up",
-                                tint = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
+                            Icon(Icons.Default.ArrowUpward, contentDescription = "Up")
                         }
                         IconButton(onClick = onMoveDown) {
-                            Icon(
-                                imageVector = Icons.Default.ArrowDownward,
-                                contentDescription = "Move Down",
-                                tint = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
+                            Icon(Icons.Default.ArrowDownward, contentDescription = "Down")
                         }
                     }
 
-                    if (download.status in listOf("DOWNLOADING", "QUEUED", "PAUSED")) {
-                        IconButton(onClick = onCancel) {
-                            Icon(
-                                imageVector = Icons.Default.Cancel,
-                                contentDescription = "Cancel",
-                                tint = MaterialTheme.colorScheme.error.copy(alpha = 0.7f)
-                            )
-                        }
+                    IconButton(onClick = onCancel) {
+                        Icon(Icons.Default.Cancel, contentDescription = "Cancel", tint = MaterialTheme.colorScheme.error.copy(alpha = 0.7f))
                     }
                 }
             }
 
-            // Progress bar for active downloads
             if (download.status == "DOWNLOADING") {
                 Spacer(modifier = Modifier.height(8.dp))
                 LinearProgressIndicator(
                     progress = { animatedProgress },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(6.dp)
-                        .clip(RoundedCornerShape(3.dp)),
+                    modifier = Modifier.fillMaxWidth().height(6.dp).clip(RoundedCornerShape(3.dp)),
                     color = MaterialTheme.colorScheme.primary,
                     trackColor = MaterialTheme.colorScheme.surfaceContainerHighest
                 )
             }
 
-            // Error message for failed downloads
             val errorMessage = download.errorMessage
             if (download.status == "FAILED" && !errorMessage.isNullOrBlank()) {
                 Spacer(modifier = Modifier.height(4.dp))
@@ -324,12 +295,15 @@ private fun DownloadQueueItem(
     }
 }
 
+private fun formatSpeed(bytesPerSecond: Long): String {
+    val kbps = bytesPerSecond / 1024.0
+    return if (kbps >= 1024) String.format("%.1f MB/s", kbps / 1024.0)
+    else String.format("%.0f KB/s", kbps)
+}
+
 @Composable
 private fun EmptyQueueState() {
-    Box(
-        modifier = Modifier.fillMaxSize(),
-        contentAlignment = Alignment.Center
-    ) {
+    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
             Icon(
                 imageVector = Icons.Default.CloudDownload,
@@ -338,17 +312,8 @@ private fun EmptyQueueState() {
                 tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f)
             )
             Spacer(modifier = Modifier.height(16.dp))
-            Text(
-                text = "No downloads yet",
-                style = MaterialTheme.typography.titleMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
-            )
-            Spacer(modifier = Modifier.height(4.dp))
-            Text(
-                text = "Paste a link to get started",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f)
-            )
+            Text(text = "No downloads yet", style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f))
+            Text(text = "Paste a link to get started", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f))
         }
     }
 }

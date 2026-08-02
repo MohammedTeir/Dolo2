@@ -66,6 +66,9 @@ dependencies {
     // Security
     implementation(libs.androidx.security.crypto)
 
+    // DocumentFile
+    implementation(libs.androidx.documentfile)
+
     // Test
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)

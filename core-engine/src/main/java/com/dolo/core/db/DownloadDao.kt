@@ -42,6 +42,9 @@ interface DownloadDao {
     @Query("UPDATE downloads SET priority = :priority WHERE id = :id")
     suspend fun updatePriority(id: String, priority: Int)
 
+    @Query("UPDATE downloads SET speedLimitKbps = :speedLimit WHERE id = :id")
+    suspend fun updateSpeedLimit(id: String, speedLimit: Int?)
+
     @Query("DELETE FROM downloads WHERE id = :id")
     suspend fun deleteDownload(id: String)
 }

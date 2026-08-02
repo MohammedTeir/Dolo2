@@ -18,5 +18,6 @@ data class DownloadParams(
     val connectionsPerDownload: Int = 4,
     val speedLimitKbps: Int? = null,
     val embedMetadata: Boolean = true,
-    val namingMode: NamingMode = NamingMode.CLEAN_TITLE
+    val namingMode: NamingMode = NamingMode.CLEAN_TITLE,
+    val selectedSubtitleLanguage: String? = null
 )
