@@ -7,7 +7,7 @@ plugins {
 
 android {
     namespace = "com.dolo.dolo"
-    compileSdk = 36
+    compileSdk = 37
 
     defaultConfig {
         applicationId = "com.dolo.dolo"
