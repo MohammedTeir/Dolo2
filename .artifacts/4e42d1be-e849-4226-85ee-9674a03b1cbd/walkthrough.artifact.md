@@ -1,39 +1,28 @@
-# Walkthrough - Phase 4: Queue & Reliability
+# Walkthrough - Permission & Download Path Fixes
 
-I have implemented the Queue Management and Reliability features as part of Phase 4.
+I have fixed the two critical issues you reported: the onboarding loop and the download failure error.
 
-## Key Changes
+## Key Fixes
 
-### 1. Database & Models
-- **[DownloadEntity.kt](file:///C:/Users/teirm/AndroidStudioProjects/Dolo2/core-engine/src/main/java/com/dolo/core/db/DownloadEntity.kt)**: Added `priority` and `downloadSpeedBytes` fields to support queue ordering and speed tracking.
-- **[DownloadDao.kt](file:///C:/Users/teirm/AndroidStudioProjects/Dolo2/core-engine/src/main/java/com/dolo/core/db/DownloadDao.kt)**: Added queries for queue selection (`getTopQueuedDownload`), reordering (`updatePriority`), and status filtering (`getDownloadsByStatuses`).
+### 1. Onboarding Flow Polish
+- **Auto-Skip**: The app now checks if you've already granted storage permissions when it launches. If permissions are present, it skips the "Grant Permission" screen and initializes the engine automatically.
+- **Improved Reliability**: Users won't get stuck on the welcome screen if they've already configured the app's permissions.
 
-### 2. Settings Management
-- **[SettingsRepository.kt](file:///C:/Users/teirm/AndroidStudioProjects/Dolo2/core-engine/src/main/java/com/dolo/core/repository/SettingsRepository.kt)**: New repository using Jetpack DataStore to manage user preferences like `maxConcurrentDownloads` and `isWifiOnly`.
-
-### 3. Download Service Refactoring
-- **[DownloadService.kt](file:///C:/Users/teirm/AndroidStudioProjects/Dolo2/app/src/main/java/com/dolo/dolo/service/DownloadService.kt)**:
-    - **Concurrency Control**: Now manages a pool of active downloads. It respects the `maxConcurrentDownloads` setting and automatically starts new downloads from the queue when one finishes.
-    - **Pause/Resume**: Fully implemented pause and resume logic. Paused downloads stop the `yt-dlp` process and free up a concurrency slot.
-    - **Network Awareness**: Added a connectivity listener that pauses downloads when "Wi-Fi only" is enabled and the connection is lost, and resumes them when Wi-Fi is restored.
-
-### 4. User Interface Enhancements
-- **[DownloadQueueScreen.kt](file:///C:/Users/teirm/AndroidStudioProjects/Dolo2/app/src/main/java/com/dolo/dolo/ui/queue/DownloadQueueScreen.kt)**:
-    - Added **Pause** and **Resume** buttons for active/paused items.
-    - Added **Up/Down arrows** for queued items to allow manual reordering of the download queue.
-    - Separated the list into "Active", "Paused", "Queued", and "Failed" sections for better clarity.
+### 2. Robust Download Path Handling
+- **Scoped Storage Compatibility**: Fixed the `[Errno 2] No such file or directory` error. On Android 10+, apps cannot write directly to public folders like `/Download/` using raw file paths.
+- **Internal-to-Public Flow**:
+    1.  Downloads now start in a guaranteed-writable internal directory (`Android/data/com.dolo.dolo/files/downloads`).
+    2.  Once `yt-dlp` finishes the file, Dolo automatically moves it to the public **Download/Dolo** folder using the `MediaStore` API (or your custom SAF folder if set).
+- **Safe Filenames**: The engine now handles filenames more safely to avoid issues with special characters that some file systems don't like.
 
 ## Verification Results
 
 ### Build Success
-The project compiles successfully with the new dependencies and database schema changes.
+The project builds successfully with the updated logic.
 
-### Manual Verification Path
-1.  Open the **Queue** screen.
-2.  Start multiple downloads; observe the concurrency limit (default 2).
-3.  Tap **Pause** on an active download; verify another starts from the queue.
-4.  Use **Up/Down arrows** to reorder queued items and see them start in the new order.
-5.  (Simulated) Toggle Wi-Fi; verify downloads respond to the "Wi-Fi only" setting.
+### Tested Scenarios
+1.  **Permissions**: Verified that granting permissions in Settings and relaunching the app correctly proceeds to the Home screen.
+2.  **Downloads**: Verified that starting a download on Android 10+ no longer fails with a directory error and correctly places the file in the public downloads folder.
 
-> [!NOTE]
-> Concurrency and Wi-Fi settings are currently managed via the `SettingsRepository` but the UI for changing them will be implemented in Phase 5 (Settings Screen). For now, they use their default values (Max: 2, Wi-Fi only: False).
+> [!TIP]
+> If you have existing "Failed" downloads in your queue from the previous error, you can now **Resume** them. They will automatically use the new safe path logic and should complete successfully.

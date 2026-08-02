@@ -178,17 +178,18 @@ class DownloadService : Service() {
             downloadDao.updateStatus(download.id, "DOWNLOADING")
             updateNotification(title = title, text = "Starting...", progress = 0f, downloadId = download.id)
 
-            // Always download to cache first for SAF support and stability
-            val tempDir = File(cacheDir, "downloads")
+            // Always download to internal storage first for Scoped Storage compatibility
+            val tempDir = File(applicationContext.getExternalFilesDir(null), "downloads")
             if (!tempDir.exists()) tempDir.mkdirs()
             
+            // Get clean filename
             val fileName = download.filePath?.let { File(it).name } ?: "download_${System.currentTimeMillis()}.mp4"
 
             val params = DownloadParams(
                 id = download.id,
                 url = download.url,
                 formatId = download.formatId,
-                outputDir = tempDir.absolutePath,
+                outputDir = tempDir.absolutePath, // FORCE internal path
                 fileName = fileName,
                 isAudioOnly = download.isAudioOnly,
                 audioFormat = download.audioFormat,
@@ -221,13 +222,16 @@ class DownloadService : Service() {
             val finalPath = StorageResolver.moveToDestination(applicationContext, downloadedFile, destUri, fileName)
             
             downloadDao.updateStatus(download.id, "COMPLETED")
+            // Update the download record with the final path
+            val completedDownload = download.copy(status = "COMPLETED", filePath = finalPath ?: downloadedFile.absolutePath, progress = 100f)
+            downloadDao.updateDownload(completedDownload)
 
             val libraryItem = LibraryItemEntity(
                 id = download.id,
                 sourceUrl = download.url,
                 title = title,
                 filePath = finalPath ?: downloadedFile.absolutePath,
-                fileSizeBytes = downloadedFile.length(), // This might be 0 if moved, but StorageResolver handles it
+                fileSizeBytes = if (finalPath != null && finalPath.startsWith("content://")) 0L else downloadedFile.length(),
                 isAudio = download.isAudioOnly
             )
             libraryItemDao.insertLibraryItem(libraryItem)

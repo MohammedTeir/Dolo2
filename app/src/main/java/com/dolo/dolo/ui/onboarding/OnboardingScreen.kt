@@ -32,10 +32,12 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.core.content.ContextCompat
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import com.dolo.core.engine.EngineInitState
 
@@ -45,6 +47,23 @@ fun OnboardingScreen(
     viewModel: OnboardingViewModel = hiltViewModel()
 ) {
     val initState by viewModel.initState.collectAsState()
+    val context = LocalContext.current
+
+    // Check if permissions are already granted
+    fun arePermissionsGranted(): Boolean {
+        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            ContextCompat.checkSelfPermission(context, Manifest.permission.READ_MEDIA_VIDEO) == android.content.pm.PackageManager.PERMISSION_GRANTED
+        } else {
+            ContextCompat.checkSelfPermission(context, Manifest.permission.READ_EXTERNAL_STORAGE) == android.content.pm.PackageManager.PERMISSION_GRANTED
+        }
+    }
+
+    // Auto-initialize if permissions already granted
+    LaunchedEffect(Unit) {
+        if (arePermissionsGranted() && initState is EngineInitState.Idle) {
+            viewModel.initializeEngine()
+        }
+    }
 
     // Permission launcher for Storage & Notification permissions
     val permissionLauncher = rememberLauncherForActivityResult(

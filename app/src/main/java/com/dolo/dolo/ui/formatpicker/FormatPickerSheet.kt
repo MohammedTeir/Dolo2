@@ -39,13 +39,7 @@ fun FormatPickerSheet(
 ) {
     val context = androidx.compose.ui.platform.LocalContext.current
     val defaultOutputDir = remember(context) {
-        val publicDoloDir = File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS), "Dolo")
-        if (publicDoloDir.exists() || publicDoloDir.mkdirs()) {
-            publicDoloDir.absolutePath
-        } else {
-            context.getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS)?.absolutePath
-                ?: publicDoloDir.absolutePath
-        }
+        context.getExternalFilesDir(null)?.absolutePath ?: context.cacheDir.absolutePath
     }
 
     var previewUrl by remember { mutableStateOf<String?>(null) }
