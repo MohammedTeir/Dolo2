@@ -19,6 +19,8 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.Sort
+import androidx.compose.material.icons.automirrored.filled.ViewList
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material.icons.outlined.*
 import androidx.compose.material3.*
@@ -48,6 +50,7 @@ fun LibraryScreen(
     viewModel: LibraryViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val context = LocalContext.current
     var showRenameDialog by remember { mutableStateOf<LibraryItemEntity?>(null) }
 
     Box(modifier = Modifier.fillMaxSize()) {
@@ -76,10 +79,10 @@ fun LibraryScreen(
                                 onPlayItem(item)
                             }
                         },
-                        onItemLongClick = { viewModel.toggleSelection(it.id) },
+                        onItemLongClick = { viewModel.toggleSelection(item.id) },
                         onRename = { showRenameDialog = it },
                         onDelete = { viewModel.deleteItem(it.id) },
-                        onShare = { item -> /* Implementation for share if needed */ }
+                        onShare = { shareItem(context, it) }
                     )
                 } else {
                     LibraryList(
@@ -93,9 +96,10 @@ fun LibraryScreen(
                                 onPlayItem(item)
                             }
                         },
-                        onItemLongClick = { viewModel.toggleSelection(it.id) },
+                        onItemLongClick = { viewModel.toggleSelection(item.id) },
                         onRename = { showRenameDialog = it },
-                        onDelete = { viewModel.deleteItem(it.id) }
+                        onDelete = { viewModel.deleteItem(item.id) },
+                        onShare = { shareItem(context, it) }
                     )
                 }
             }
@@ -113,7 +117,10 @@ fun LibraryScreen(
                 onClear = { viewModel.clearSelection() },
                 onSelectAll = { viewModel.selectAll(uiState.items) },
                 onDelete = { viewModel.deleteSelectedItems() },
-                onShare = { /* Implement bulk share */ }
+                onShare = {
+                    val selectedItems = uiState.items.filter { uiState.selectedItemIds.contains(it.id) }
+                    shareSelectedItems(context, selectedItems)
+                }
             )
         }
     }
@@ -179,14 +186,14 @@ fun LibraryTopBar(
 
             IconButton(onClick = onToggleView) {
                 Icon(
-                    imageVector = if (isGridView) Icons.Default.ViewList else Icons.Default.GridView,
+                    imageVector = if (isGridView) Icons.AutoMirrored.Filled.ViewList else Icons.Default.GridView,
                     contentDescription = "Toggle view mode"
                 )
             }
 
             Box {
                 IconButton(onClick = { showSortMenu = true }) {
-                    Icon(Icons.Default.Sort, contentDescription = "Sort options")
+                    Icon(Icons.AutoMirrored.Filled.Sort, contentDescription = "Sort options")
                 }
                 DropdownMenu(
                     expanded = showSortMenu,
@@ -220,7 +227,8 @@ fun LibraryList(
     onItemClick: (LibraryItemEntity) -> Unit,
     onItemLongClick: (LibraryItemEntity) -> Unit,
     onRename: (LibraryItemEntity) -> Unit,
-    onDelete: (LibraryItemEntity) -> Unit
+    onDelete: (LibraryItemEntity) -> Unit,
+    onShare: (LibraryItemEntity) -> Unit
 ) {
     LazyColumn(
         modifier = Modifier
@@ -237,7 +245,8 @@ fun LibraryList(
                 onClick = { onItemClick(item) },
                 onLongClick = { onItemLongClick(item) },
                 onRename = { onRename(item) },
-                onDelete = { onDelete(item) }
+                onDelete = { onDelete(item) },
+                onShare = { onShare(item) }
             )
         }
     }
@@ -252,7 +261,8 @@ fun LibraryListItem(
     onClick: () -> Unit,
     onLongClick: () -> Unit,
     onRename: () -> Unit,
-    onDelete: () -> Unit
+    onDelete: () -> Unit,
+    onShare: () -> Unit
 ) {
     var showMenu by remember { mutableStateOf(false) }
 
@@ -324,10 +334,21 @@ fun LibraryListItem(
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis
                 )
+                val metadataText = buildString {
+                    if (!item.uploader.isNullOrBlank()) {
+                        append(item.uploader)
+                        append(" • ")
+                    }
+                    append(formatFileSize(item.fileSizeBytes))
+                    append(" • ")
+                    append(formatDate(item.downloadedAt))
+                }
                 Text(
-                    text = "${formatFileSize(item.fileSizeBytes)} • ${formatDate(item.downloadedAt)}",
+                    text = metadataText,
                     style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
                 )
             }
 
@@ -337,6 +358,11 @@ fun LibraryListItem(
                         Icon(Icons.Default.MoreVert, contentDescription = "Menu")
                     }
                     DropdownMenu(expanded = showMenu, onDismissRequest = { showMenu = false }) {
+                        DropdownMenuItem(
+                            text = { Text("Share") },
+                            onClick = { onShare(); showMenu = false },
+                            leadingIcon = { Icon(Icons.Default.Share, contentDescription = null) }
+                        )
                         DropdownMenuItem(
                             text = { Text("Rename") },
                             onClick = { onRename(); showMenu = false },
@@ -386,7 +412,8 @@ fun LibraryGrid(
                 onClick = { onItemClick(item) },
                 onLongClick = { onItemLongClick(item) },
                 onRename = { onRename(item) },
-                onDelete = { onDelete(item) }
+                onDelete = { onDelete(item) },
+                onShare = { onShare(item) }
             )
         }
     }
@@ -401,7 +428,8 @@ fun LibraryGridItem(
     onClick: () -> Unit,
     onLongClick: () -> Unit,
     onRename: () -> Unit,
-    onDelete: () -> Unit
+    onDelete: () -> Unit,
+    onShare: () -> Unit
 ) {
     var showMenu by remember { mutableStateOf(false) }
 
@@ -472,6 +500,11 @@ fun LibraryGridItem(
 
                     DropdownMenu(expanded = showMenu, onDismissRequest = { showMenu = false }) {
                         DropdownMenuItem(
+                            text = { Text("Share") },
+                            onClick = { onShare(); showMenu = false },
+                            leadingIcon = { Icon(Icons.Default.Share, contentDescription = null) }
+                        )
+                        DropdownMenuItem(
                             text = { Text("Rename") },
                             onClick = { onRename(); showMenu = false },
                             leadingIcon = { Icon(Icons.Default.Edit, contentDescription = null) }
@@ -497,6 +530,15 @@ fun LibraryGridItem(
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis
                 )
+                if (!item.uploader.isNullOrBlank()) {
+                    Text(
+                        text = item.uploader,
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.primary,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
                 Text(
                     text = formatFileSize(item.fileSizeBytes),
                     style = MaterialTheme.typography.bodySmall,
@@ -617,6 +659,50 @@ fun EmptyLibraryState(isSearching: Boolean) {
             )
         }
     }
+}
+
+private fun shareItem(context: Context, item: LibraryItemEntity) {
+    val file = java.io.File(item.filePath)
+    if (!file.exists()) return
+
+    val uri = androidx.core.content.FileProvider.getUriForFile(
+        context,
+        "${context.packageName}.fileprovider",
+        file
+    )
+
+    val intent = Intent(Intent.ACTION_SEND).apply {
+        type = if (item.isAudio) "audio/*" else "video/*"
+        putExtra(Intent.EXTRA_STREAM, uri)
+        addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+    }
+    context.startActivity(Intent.createChooser(intent, "Share Media"))
+}
+
+private fun shareSelectedItems(context: Context, items: List<LibraryItemEntity>) {
+    if (items.isEmpty()) return
+
+    val uris = ArrayList<android.net.Uri>()
+    items.forEach { item ->
+        val file = java.io.File(item.filePath)
+        if (file.exists()) {
+            val uri = androidx.core.content.FileProvider.getUriForFile(
+                context,
+                "${context.packageName}.fileprovider",
+                file
+            )
+            uris.add(uri)
+        }
+    }
+
+    if (uris.isEmpty()) return
+
+    val intent = Intent(Intent.ACTION_SEND_MULTIPLE).apply {
+        type = "*/*"
+        putParcelableArrayListExtra(Intent.EXTRA_STREAM, uris)
+        addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+    }
+    context.startActivity(Intent.createChooser(intent, "Share Multiple Files"))
 }
 
 private fun formatFileSize(bytes: Long): String {
