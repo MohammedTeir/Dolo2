@@ -179,18 +179,21 @@ class DownloadService : Service() {
             updateNotification(title = title, text = "Starting...", progress = 0f, downloadId = download.id)
 
             // Always download to internal storage first for Scoped Storage compatibility
-            val tempDir = File(applicationContext.getExternalFilesDir(null), "downloads")
+            val tempDir = File(applicationContext.getExternalFilesDir(null), "temp_downloads")
             if (!tempDir.exists()) tempDir.mkdirs()
             
-            // Get clean filename
-            val fileName = download.filePath?.let { File(it).name } ?: "download_${System.currentTimeMillis()}.mp4"
+            // ENSURE fileName is just the name, not a full path from an old DB entry
+            val rawFileName = download.filePath?.let { File(it).name } ?: "download_${System.currentTimeMillis()}.mp4"
+            val namePart = if (rawFileName.contains(".")) rawFileName.substringBeforeLast(".") else rawFileName
+            val extPart = if (rawFileName.contains(".")) rawFileName.substringAfterLast(".") else "mp4"
+            val safeFileName = com.dolo.core.util.FileNamer.sanitize(namePart) + "." + extPart
 
             val params = DownloadParams(
                 id = download.id,
                 url = download.url,
                 formatId = download.formatId,
-                outputDir = tempDir.absolutePath, // FORCE internal path
-                fileName = fileName,
+                outputDir = tempDir.absolutePath, 
+                fileName = safeFileName,
                 isAudioOnly = download.isAudioOnly,
                 audioFormat = download.audioFormat,
                 audioBitrate = download.audioBitrate,
@@ -199,7 +202,7 @@ class DownloadService : Service() {
                 useCookies = download.useCookies,
                 cookiesPath = settingsRepository.cookiesFilePath.first(),
                 connectionsPerDownload = settingsRepository.connectionsPerDownload.first(),
-                speedLimitKbps = settingsRepository.globalSpeedLimitKbps.first()
+                speedLimitKbps = download.speedLimitKbps ?: settingsRepository.globalSpeedLimitKbps.first()
             )
 
             val request = DownloadRequestBuilder.buildRequest(params)
@@ -214,12 +217,12 @@ class DownloadService : Service() {
             }
 
             // Download complete
-            val downloadedFile = File(tempDir, fileName)
+            val downloadedFile = File(tempDir, safeFileName)
             if (!downloadedFile.exists()) throw Exception("Downloaded file not found")
 
             // Move to final destination
             val destUri = settingsRepository.downloadLocationUri.first()
-            val finalPath = StorageResolver.moveToDestination(applicationContext, downloadedFile, destUri, fileName)
+            val finalPath = StorageResolver.moveToDestination(applicationContext, downloadedFile, destUri, safeFileName)
             
             downloadDao.updateStatus(download.id, "COMPLETED")
             // Update the download record with the final path

@@ -18,7 +18,12 @@ class YtDlpExtractor @Inject constructor(
 ) {
     suspend fun extractInfo(url: String): Result<VideoMetadata> = withContext(Dispatchers.IO) {
         try {
-            val videoInfo: VideoInfo = youtubeDL.getInfo(url)
+            val request = YoutubeDLRequest(url)
+            request.addOption("--no-check-certificate")
+            request.addOption("--user-agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36")
+            request.addOption("--extractor-args", "youtube:player_client=android")
+            
+            val videoInfo: VideoInfo = youtubeDL.getInfo(request)
             
             // Check if it's a playlist but extracted as a single video (yt-dlp default for watch?v=...&list=...)
             val isPlaylist = !videoInfo.webpageUrl.isNullOrEmpty() && (videoInfo.webpageUrl!!.contains("playlist") || videoInfo.webpageUrl!!.contains("list="))
@@ -34,6 +39,8 @@ class YtDlpExtractor @Inject constructor(
             val request = YoutubeDLRequest(url)
             request.addOption("--flat-playlist")
             request.addOption("--dump-single-json")
+            request.addOption("--no-check-certificate")
+            request.addOption("--user-agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36")
             
             val response = youtubeDL.execute(request, null)
             val playlistInfo = youtubeDL.objectMapper.readValue(response.out, PlaylistInfo::class.java)
@@ -52,7 +59,13 @@ class YtDlpExtractor @Inject constructor(
                 else -> "ytsearch"
             }
             val searchUrl = "$prefix$limit:$query"
-            val videoInfo: VideoInfo = youtubeDL.getInfo(searchUrl)
+            
+            val request = YoutubeDLRequest(searchUrl)
+            request.addOption("--no-check-certificate")
+            request.addOption("--user-agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36")
+            request.addOption("--extractor-args", "youtube:player_client=android")
+
+            val videoInfo: VideoInfo = youtubeDL.getInfo(request)
             
             // Search result might return a playlist (collection of entries)
             val results = if (videoInfo.formats == null && videoInfo.url == null) {
@@ -64,6 +77,17 @@ class YtDlpExtractor @Inject constructor(
                 listOf(mapMetadata(videoInfo, videoInfo.webpageUrl ?: ""))
             }
             Result.success(results)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    suspend fun clearCache(): Result<Unit> = withContext(Dispatchers.IO) {
+        try {
+            val request = YoutubeDLRequest("dummy")
+            request.addOption("--rm-cache-dir")
+            youtubeDL.execute(request, null)
+            Result.success(Unit)
         } catch (e: Exception) {
             Result.failure(e)
         }

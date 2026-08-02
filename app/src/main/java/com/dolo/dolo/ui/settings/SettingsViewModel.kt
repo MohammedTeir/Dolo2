@@ -2,6 +2,7 @@ package com.dolo.dolo.ui.settings
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.dolo.core.repository.DownloadRepository
 import com.dolo.core.repository.SettingsRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.SharingStarted
@@ -30,7 +31,8 @@ data class SettingsUiState(
 
 @HiltViewModel
 class SettingsViewModel @Inject constructor(
-    private val settingsRepository: SettingsRepository
+    private val settingsRepository: SettingsRepository,
+    private val downloadRepository: DownloadRepository
 ) : ViewModel() {
 
     val uiState: StateFlow<SettingsUiState> = combine(
@@ -121,5 +123,11 @@ class SettingsViewModel @Inject constructor(
 
     fun updateDownloadLocation(uri: String?, name: String?) {
         viewModelScope.launch { settingsRepository.updateDownloadLocation(uri, name) }
+    }
+
+    fun clearEngineCache() {
+        viewModelScope.launch {
+            downloadRepository.clearEngineCache()
+        }
     }
 }

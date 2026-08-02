@@ -116,6 +116,10 @@ class DownloadRepository @Inject constructor(
         // For simplicity, we'll let it apply on next resume/start.
     }
 
+    suspend fun clearEngineCache(): Result<Unit> {
+        return extractor.clearCache()
+    }
+
     fun hasEnoughStorageSpace(path: String, requiredBytes: Long): Boolean {
         return StorageChecker.hasEnoughSpace(path, requiredBytes)
     }

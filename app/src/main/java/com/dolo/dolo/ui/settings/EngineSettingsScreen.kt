@@ -16,6 +16,7 @@ import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.Cookie
 import androidx.compose.material.icons.filled.Update
 import androidx.compose.material3.Button
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -104,6 +105,17 @@ fun EngineSettingsScreen(
                         Icon(Icons.Default.Update, contentDescription = null)
                         Spacer(modifier = Modifier.width(8.dp))
                         Text("Check for Engine Update")
+                    }
+                    
+                    Spacer(modifier = Modifier.padding(vertical = 4.dp))
+                    
+                    OutlinedButton(
+                        onClick = { viewModel.clearEngineCache() },
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Icon(Icons.Default.Clear, contentDescription = null)
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text("Clear Engine Cache")
                     }
                 }
             }

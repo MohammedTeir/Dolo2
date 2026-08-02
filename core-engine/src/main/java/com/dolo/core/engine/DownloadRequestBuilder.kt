@@ -58,7 +58,8 @@ object DownloadRequestBuilder {
         request.addOption("--external-downloader", "aria2c")
         val connections = params.connectionsPerDownload.coerceIn(1, 16)
         
-        val ariaArgs = StringBuilder("aria2c:-x $connections -s $connections -k 1M")
+        val userAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+        val ariaArgs = StringBuilder("aria2c:-x $connections -s $connections -k 1M --user-agent=\"$userAgent\"")
         if (params.speedLimitKbps != null && params.speedLimitKbps > 0) {
             ariaArgs.append(" --max-overall-download-limit=${params.speedLimitKbps}K")
         }
@@ -79,6 +80,11 @@ object DownloadRequestBuilder {
         // Compatibility & warning suppression flags
         request.addOption("--no-mtime")
         request.addOption("--no-warnings")
+        request.addOption("--no-check-certificate")
+        request.addOption("--prefer-insecure")
+        request.addOption("--geo-bypass")
+        request.addOption("--user-agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36")
+        request.addOption("--extractor-args", "youtube:player_client=android")
 
         return request
     }

@@ -1,16 +1,9 @@
-# Task List - Phase 7: Batch, Playlists & Channels
+# Task List - Fix HTTP 403 & Download Stability
 
-- [ ] Core Engine Enhancements
-    - [ ] Update `YtDlpExtractor` for flat playlist extraction
-    - [ ] Add subfolder and index logic to `FileNamer`
-    - [ ] Implement `queueBatch` in `DownloadRepository`
-- [ ] Playlist UI
-    - [ ] Create `PlaylistSelectionScreen`
-    - [ ] Build batch quality preset components
-- [ ] Integration & Logic
-    - [ ] Implement URL ambiguity detection in `HomeViewModel`
-    - [ ] Add Choice Dialog to `MainScreen`
-    - [ ] Update `MainActivity` navigation routes
+- [ ] Core Engine Hardening
+    - [ ] Update `DownloadRequestBuilder.kt` with User-Agent and evasion flags
+    - [ ] Update `YtDlpExtractor.kt` with safety flags
+- [ ] UI Polish
+    - [ ] Add "Clear Engine Cache" to `EngineSettingsScreen.kt`
 - [ ] Verification
-    - [ ] Test full playlist extraction
-    - [ ] Test batch queueing with subfolders
+    - [ ] Verify failed downloads can now resume and complete

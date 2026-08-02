@@ -1,52 +1,38 @@
-# Implementation Plan - Phase 7: Batch, Playlists & Channels
+# Implementation Plan - Fix HTTP 403 & Download Stability
 
-This phase implements advanced extraction for playlists and channels, a dedicated selection UI for batches, and automatic subfolder organization for playlist downloads.
+This plan addresses the `HTTP Error 403: Forbidden` error and the slow download start reported.
+
+## Root Cause Analysis
+- **HTTP 403 Forbidden**: Usually occurs when the server (e.g., YouTube) detects automated usage or the link signature expires. Segmented downloading with `aria2c` can sometimes trigger this if the headers aren't perfectly matched or if too many connections are used.
+- **Slow Start**: Often caused by the engine performing heavy extraction or trying to initialize the multi-connection segments.
 
 ## Proposed Changes
 
 ### [core-engine]
 
+#### [MODIFY] [DownloadRequestBuilder.kt](file:///C:/Users/teirm/AndroidStudioProjects/Dolo2/core-engine/src/main/java/com/dolo/core/engine/DownloadRequestBuilder.kt)
+- **Add User-Agent**: Include a real browser User-Agent to bypass basic bot detection.
+- **Add Evasion Flags**:
+    - `--no-check-certificate`: To avoid SSL handshake issues in the Python runtime.
+    - `--rm-cache-dir`: To clear old session data that might have expired tokens.
+- **Tweak YouTube Extractor**:
+    - Add `--extractor-args "youtube:player_client=android"` which is often more stable on Android.
+- **Improve Aria2c args**:
+    - Add `--summary-interval=0` to reduce logging overhead.
+    - Ensure certificates are ignored in aria2c too if needed.
+
 #### [MODIFY] [YtDlpExtractor.kt](file:///C:/Users/teirm/AndroidStudioProjects/Dolo2/core-engine/src/main/java/com/dolo/core/engine/YtDlpExtractor.kt)
-- Add `extractPlaylist(url: String)`: Use `YoutubeDLRequest` with `--flat-playlist` and `--dump-single-json` to get the list of entries without resolving full formats for each.
-- Since `youtubedl-android`'s `VideoInfo` mapper might not support the `entries` field, we will execute the request and parse the raw JSON output if needed, or check if the library supports `PlaylistInfo`.
-
-#### [MODIFY] [FileNamer.kt](file:///C:/Users/teirm/AndroidStudioProjects/Dolo2/core-engine/src/main/java/com/dolo/core/util/FileNamer.kt)
-- Add `generatePlaylistFolder(title: String)`: Sanitizes the playlist title to create a safe subfolder name.
-- Enhance `generateFileName` to better handle index prefixing for playlist items.
-
-#### [MODIFY] [DownloadRepository.kt](file:///C:/Users/teirm/AndroidStudioProjects/Dolo2/core-engine/src/main/java/com/dolo/core/repository/DownloadRepository.kt)
-- Add `queueBatch(paramsList: List<DownloadParams>)` to enqueue multiple items at once.
+- Add similar safety flags (`--no-check-certificate`) to the info extraction request to speed it up and avoid errors.
 
 ### [app]
 
-#### [NEW] [PlaylistSelectionScreen.kt](file:///C:/Users/teirm/AndroidStudioProjects/Dolo2/app/src/main/java/com/dolo/dolo/ui/home/PlaylistSelectionScreen.kt)
-- Displays playlist metadata (title, item count).
-- List of entries with checkboxes and thumbnails.
-- "Select All" / "Deselect All" options.
-- **Batch Quality Preset**: One-tap selection to apply "1080p Video" or "Best Audio" to all selected items.
-- "Add to Queue" button.
-
-#### [MODIFY] [HomeViewModel.kt](file:///C:/Users/teirm/AndroidStudioProjects/Dolo2/app/src/main/java/com/dolo/dolo/ui/home/HomeViewModel.kt)
-- Update `extractInfo` logic:
-    - If URL contains `list=` and `v=`, show a dialog: "Download just this video or the whole playlist?".
-    - If it's a playlist/channel URL, navigate to `PlaylistSelectionScreen`.
-- Handle batch queueing results.
-
-#### [MODIFY] [MainActivity.kt](file:///C:/Users/teirm/AndroidStudioProjects/Dolo2/app/src/main/java/com/dolo/dolo/MainActivity.kt)
-- Add navigation route for `PlaylistSelectionScreen`.
-
-#### [MODIFY] [MainScreen.kt](file:///C:/Users/teirm/AndroidStudioProjects/Dolo2/app/src/main/java/com/dolo/dolo/ui/MainScreen.kt)
-- Handle the "Video vs Playlist" choice dialog.
-
-## User Review Required
-
-> [!NOTE]
-> Extracting full metadata (formats) for every item in a 100-video playlist up front is slow. We will use a **Flat Extraction** first (Titles + IDs only) and resolve the actual media URLs only when the download starts for each item in the service.
+#### [MODIFY] [EngineSettingsScreen.kt](file:///C:/Users/teirm/AndroidStudioProjects/Dolo2/app/src/main/java/com/dolo/dolo/ui/settings/EngineSettingsScreen.kt)
+- Add a "Clear Engine Cache" button that calls a new method in the repository.
 
 ## Verification Plan
 
 ### Manual Verification
-1.  **Playlist Detection**: Paste a YouTube playlist link. Verify the app navigates to `PlaylistSelectionScreen`.
-2.  **Batch Selection**: Select 3 specific videos from a playlist, choose "Quick MP3" preset, and tap "Download". Verify 3 tasks appear in the Queue.
-3.  **Subfolders**: Verify the 3 downloaded files are saved inside a folder named after the playlist in your Download directory.
-4.  **Ambiguity**: Paste a link that is both a video and part of a playlist. Verify the prompt appears correctly.
+1.  **Retry Failed Download**: Use the **Resume** button on the failed items.
+2.  **Stability Check**: Download a long video (10+ mins) and verify it doesn't fail mid-way with 403.
+3.  **Speed**: Verify that the "Starting..." state is shorter.
+4.  **Engine Update**: Ensure the user is prompted to use the **"Check for Engine Update"** button if they haven't recently, as YouTube frequently breaks older `yt-dlp` versions.
