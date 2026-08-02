@@ -48,8 +48,8 @@ dependencies {
     ksp(libs.androidx.room.compiler)
 
     // WorkManager + Hilt integration
-    implementation(libs.androidx.work.runtime.ktx)
-    implementation(libs.androidx.hilt.work)
+    api(libs.androidx.work.runtime.ktx)
+    api(libs.androidx.hilt.work)
     ksp(libs.androidx.hilt.compiler)
 
     // youtubedl-android engine
