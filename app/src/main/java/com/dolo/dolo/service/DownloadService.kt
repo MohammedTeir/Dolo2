@@ -89,10 +89,12 @@ class DownloadService : Service() {
 
                 val request = DownloadRequestBuilder.buildRequest(params)
 
-                val callback = DownloadProgressCallback { progress: Float, etaInSeconds: Long, line: String ->
-                    serviceScope.launch {
-                        downloadDao.updateProgress(params.id, 0L, progress)
-                        updateNotification("Downloading: ${progress.toInt()}%", progress)
+                val callback = object : DownloadProgressCallback {
+                    override fun onProgressUpdate(progress: Float, etaInSeconds: Long, line: String) {
+                        serviceScope.launch {
+                            downloadDao.updateProgress(params.id, 0L, progress)
+                            updateNotification("Downloading: ${progress.toInt()}%", progress)
+                        }
                     }
                 }
 
