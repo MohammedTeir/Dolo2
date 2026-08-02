@@ -71,6 +71,14 @@ dependencies {
     // AndroidX Core
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)
+    implementation(libs.androidx.lifecycle.runtime.compose)
+
+    // Image Loading
+    implementation(libs.coil.compose)
+    implementation(libs.coil.network.okhttp)
+
+    // Material Icons Extended
+    implementation(libs.androidx.compose.material.icons.extended)
 
     // Hilt & WorkManager
     implementation(libs.hilt.android)

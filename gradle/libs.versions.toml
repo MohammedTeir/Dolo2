@@ -25,6 +25,9 @@ youtubedlAndroid = "0.18.1"
 # Coroutines
 coroutines = "1.10.2"
 
+# Image Loading
+coil = "3.2.0"
+
 # Test
 junit = "4.13.2"
 junitVersion = "1.3.0"
@@ -72,6 +75,16 @@ youtubedl-android-aria2c = { group = "io.github.junkfood02.youtubedl-android", n
 # Coroutines
 kotlinx-coroutines-android = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-android", version.ref = "coroutines" }
 kotlinx-coroutines-core = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-core", version.ref = "coroutines" }
+
+# Image Loading
+coil-compose = { group = "io.coil-kt.coil3", name = "coil-compose", version.ref = "coil" }
+coil-network-okhttp = { group = "io.coil-kt.coil3", name = "coil-network-okhttp", version.ref = "coil" }
+
+# Compose Icons Extended
+androidx-compose-material-icons-extended = { group = "androidx.compose.material", name = "material-icons-extended" }
+
+# Lifecycle Compose
+androidx-lifecycle-runtime-compose = { group = "androidx.lifecycle", name = "lifecycle-runtime-compose", version.ref = "lifecycleRuntimeKtx" }
 
 # Test
 junit = { group = "junit", name = "junit", version.ref = "junit" }

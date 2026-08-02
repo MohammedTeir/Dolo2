@@ -55,7 +55,7 @@ class MainActivity : ComponentActivity() {
                         }
 
                         composable("main") {
-                            MainPlaceholderScreen(sharedUrl = sharedUrl)
+                            com.dolo.dolo.ui.MainScreen(sharedUrl = sharedUrl)
                         }
                     }
                 }
@@ -75,17 +75,5 @@ class MainActivity : ComponentActivity() {
                 sharedUrl = text.trim()
             }
         }
-    }
-}
-
-@Composable
-fun MainPlaceholderScreen(sharedUrl: String?) {
-    Box(
-        modifier = Modifier.fillMaxSize(),
-        contentAlignment = Alignment.Center
-    ) {
-        Text(
-            text = if (sharedUrl != null) "Dolo Engine Ready!\nReceived Shared URL: $sharedUrl" else "Dolo Engine Ready!"
-        )
     }
 }

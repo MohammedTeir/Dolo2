@@ -47,36 +47,58 @@ class DownloadService : Service() {
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        if (intent?.action == "START_DOWNLOAD") {
-            val downloadId = intent.getStringExtra("DOWNLOAD_ID") ?: return START_NOT_STICKY
-            val url = intent.getStringExtra("URL") ?: return START_NOT_STICKY
-            val formatId = intent.getStringExtra("FORMAT_ID")
-            val outputDir = intent.getStringExtra("OUTPUT_DIR") ?: cacheDir.absolutePath
-            val fileName = intent.getStringExtra("FILE_NAME")
-            val isAudioOnly = intent.getBooleanExtra("IS_AUDIO_ONLY", false)
-            val audioFormat = intent.getStringExtra("AUDIO_FORMAT") ?: "mp3"
-            val audioBitrate = intent.getIntExtra("AUDIO_BITRATE", 192)
-            val useCookies = intent.getBooleanExtra("USE_COOKIES", false)
-            val cookiesPath = intent.getStringExtra("COOKIES_PATH")
-            val trimStart = if (intent.hasExtra("TRIM_START")) intent.getFloatExtra("TRIM_START", 0f) else null
-            val trimEnd = if (intent.hasExtra("TRIM_END")) intent.getFloatExtra("TRIM_END", 0f) else null
+        when (intent?.action) {
+            "START_DOWNLOAD" -> {
+                val downloadId = intent.getStringExtra("DOWNLOAD_ID") ?: return START_NOT_STICKY
+                val url = intent.getStringExtra("URL") ?: return START_NOT_STICKY
+                val formatId = intent.getStringExtra("FORMAT_ID")
+                val outputDir = intent.getStringExtra("OUTPUT_DIR") ?: cacheDir.absolutePath
+                val fileName = intent.getStringExtra("FILE_NAME")
+                val isAudioOnly = intent.getBooleanExtra("IS_AUDIO_ONLY", false)
+                val audioFormat = intent.getStringExtra("AUDIO_FORMAT") ?: "mp3"
+                val audioBitrate = intent.getIntExtra("AUDIO_BITRATE", 192)
+                val useCookies = intent.getBooleanExtra("USE_COOKIES", false)
+                val cookiesPath = intent.getStringExtra("COOKIES_PATH")
+                val trimStart = if (intent.hasExtra("TRIM_START")) intent.getFloatExtra("TRIM_START", 0f) else null
+                val trimEnd = if (intent.hasExtra("TRIM_END")) intent.getFloatExtra("TRIM_END", 0f) else null
 
-            val params = DownloadParams(
-                id = downloadId,
-                url = url,
-                formatId = formatId,
-                outputDir = outputDir,
-                fileName = fileName,
-                isAudioOnly = isAudioOnly,
-                audioFormat = audioFormat,
-                audioBitrate = audioBitrate,
-                trimStartSeconds = trimStart,
-                trimEndSeconds = trimEnd,
-                useCookies = useCookies,
-                cookiesPath = cookiesPath
-            )
+                val params = DownloadParams(
+                    id = downloadId,
+                    url = url,
+                    formatId = formatId,
+                    outputDir = outputDir,
+                    fileName = fileName,
+                    isAudioOnly = isAudioOnly,
+                    audioFormat = audioFormat,
+                    audioBitrate = audioBitrate,
+                    trimStartSeconds = trimStart,
+                    trimEndSeconds = trimEnd,
+                    useCookies = useCookies,
+                    cookiesPath = cookiesPath
+                )
 
-            executeDownload(params)
+                executeDownload(params)
+            }
+            "CANCEL_DOWNLOAD" -> {
+                val downloadId = intent.getStringExtra("DOWNLOAD_ID")
+                if (downloadId != null) {
+                    youtubeDL.destroyProcessById(downloadId)
+                    serviceScope.launch {
+                        downloadDao.updateStatus(downloadId, "CANCELLED")
+                    }
+                    updateNotification("Download cancelled", 0f, downloadId = downloadId)
+                }
+            }
+            "PAUSE_DOWNLOAD" -> {
+                val downloadId = intent.getStringExtra("DOWNLOAD_ID")
+                if (downloadId != null) {
+                    youtubeDL.destroyProcessById(downloadId)
+                    serviceScope.launch {
+                        downloadDao.updateStatus(downloadId, "PAUSED")
+                    }
+                    updateNotification("Download paused", 0f, downloadId = downloadId)
+                }
+            }
         }
         return START_STICKY
     }
@@ -85,14 +107,14 @@ class DownloadService : Service() {
         serviceScope.launch {
             try {
                 downloadDao.updateStatus(params.id, "DOWNLOADING")
-                updateNotification("Downloading...", 0f)
+                updateNotification("Downloading...", 0f, downloadId = params.id)
 
                 val request = DownloadRequestBuilder.buildRequest(params)
 
                 youtubeDL.execute(request, params.id) { progress, etaInSeconds, line ->
                     serviceScope.launch {
                         downloadDao.updateProgress(params.id, 0L, progress)
-                        updateNotification("Downloading: ${progress.toInt()}%", progress)
+                        updateNotification("Downloading: ${progress.toInt()}%", progress, downloadId = params.id)
                     }
                 }
 
@@ -111,27 +133,56 @@ class DownloadService : Service() {
                 )
                 libraryItemDao.insertLibraryItem(libraryItem)
 
-                updateNotification("Download complete", 100f)
+                updateNotification("Download complete", 100f, downloadId = params.id)
             } catch (e: Exception) {
                 e.printStackTrace()
                 downloadDao.updateStatus(params.id, "FAILED", errorMessage = e.localizedMessage)
-                updateNotification("Download failed", 0f)
+                updateNotification("Download failed", 0f, downloadId = params.id)
             }
         }
     }
 
-    private fun buildNotification(text: String, progress: Float, downloadedBytes: Long = 0, totalBytes: Long = 0) =
-        NotificationCompat.Builder(this, CHANNEL_ID)
+    private fun buildNotification(text: String, progress: Float, downloadedBytes: Long = 0, totalBytes: Long = 0, downloadId: String? = null): android.app.Notification {
+        val builder = NotificationCompat.Builder(this, CHANNEL_ID)
             .setContentTitle("Dolo Downloader")
             .setContentText(text)
             .setSmallIcon(android.R.drawable.stat_sys_download)
             .setProgress(100, progress.toInt(), progress == 0f && text.contains("Downloading"))
-            .setOngoing(true)
-            .build()
+            .setOngoing(progress < 100f && !text.contains("cancelled") && !text.contains("failed") && !text.contains("paused"))
 
-    private fun updateNotification(text: String, progress: Float) {
+        if (downloadId != null && text.startsWith("Downloading")) {
+            val pauseIntent = Intent(this, DownloadService::class.java).apply {
+                action = "PAUSE_DOWNLOAD"
+                putExtra("DOWNLOAD_ID", downloadId)
+            }
+            val pausePendingIntent = android.app.PendingIntent.getService(
+                this,
+                downloadId.hashCode(),
+                pauseIntent,
+                android.app.PendingIntent.FLAG_UPDATE_CURRENT or android.app.PendingIntent.FLAG_IMMUTABLE
+            )
+
+            val cancelIntent = Intent(this, DownloadService::class.java).apply {
+                action = "CANCEL_DOWNLOAD"
+                putExtra("DOWNLOAD_ID", downloadId)
+            }
+            val cancelPendingIntent = android.app.PendingIntent.getService(
+                this,
+                downloadId.hashCode() + 1,
+                cancelIntent,
+                android.app.PendingIntent.FLAG_UPDATE_CURRENT or android.app.PendingIntent.FLAG_IMMUTABLE
+            )
+
+            builder.addAction(android.R.drawable.ic_media_pause, "Pause", pausePendingIntent)
+            builder.addAction(android.R.drawable.ic_menu_close_clear_cancel, "Cancel", cancelPendingIntent)
+        }
+
+        return builder.build()
+    }
+
+    private fun updateNotification(text: String, progress: Float, downloadId: String? = null) {
         val manager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-        manager.notify(NOTIFICATION_ID, buildNotification(text, progress))
+        manager.notify(NOTIFICATION_ID, buildNotification(text, progress, downloadId = downloadId))
     }
 
     private fun createNotificationChannel() {

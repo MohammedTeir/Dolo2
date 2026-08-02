@@ -63,6 +63,16 @@ class DownloadRepository @Inject constructor(
 
     suspend fun cancelDownload(id: String) {
         downloadDao.updateStatus(id, "CANCELLED")
+        try {
+            val intent = Intent().apply {
+                setClassName(context.packageName, "com.dolo.dolo.service.DownloadService")
+                action = "CANCEL_DOWNLOAD"
+                putExtra("DOWNLOAD_ID", id)
+            }
+            context.startService(intent)
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
     }
 
     fun hasEnoughStorageSpace(path: String, requiredBytes: Long): Boolean {
