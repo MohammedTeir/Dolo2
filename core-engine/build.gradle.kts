@@ -69,6 +69,10 @@ dependencies {
     // DocumentFile
     implementation(libs.androidx.documentfile)
 
+    // Jackson
+    implementation(libs.jackson.databind)
+    implementation(libs.jackson.annotations)
+
     // Test
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)

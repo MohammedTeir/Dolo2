@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -34,6 +35,8 @@ import com.dolo.dolo.ui.vault.VaultAuthScreen
 import com.dolo.dolo.ui.vault.VaultScreen
 import com.dolo.dolo.ui.vault.VaultSetupScreen
 import com.dolo.dolo.ui.vault.VaultViewModel
+import com.dolo.dolo.ui.home.PlaylistSelectionScreen
+import com.dolo.dolo.ui.home.HomeViewModel
 import dagger.hilt.android.AndroidEntryPoint
 import javax.inject.Inject
 
@@ -63,6 +66,15 @@ class MainActivity : ComponentActivity() {
                 val navController = rememberNavController()
 
                 Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
+                    val homeViewModel: HomeViewModel = hiltViewModel()
+                    val homeState by homeViewModel.uiState.collectAsState()
+
+                    LaunchedEffect(homeState.extractedPlaylist) {
+                        if (homeState.extractedPlaylist != null) {
+                            navController.navigate("playlist_selection")
+                        }
+                    }
+
                     NavHost(
                         navController = navController,
                         startDestination = "onboarding",
@@ -91,8 +103,25 @@ class MainActivity : ComponentActivity() {
                                     } else {
                                         navController.navigate("vault_screen")
                                     }
-                                }
+                                },
+                                homeViewModel = homeViewModel
                             )
+                        }
+
+                        composable("playlist_selection") {
+                            homeState.extractedPlaylist?.let { playlist ->
+                                PlaylistSelectionScreen(
+                                    playlist = playlist,
+                                    onBack = { 
+                                        homeViewModel.clearState()
+                                        navController.popBackStack() 
+                                    },
+                                    onConfirm = { indices, isAudio, format, bitrate ->
+                                        homeViewModel.queuePlaylist(playlist, indices, isAudio, format, bitrate)
+                                        navController.popBackStack()
+                                    }
+                                )
+                            }
                         }
 
                         composable("vault_setup") {

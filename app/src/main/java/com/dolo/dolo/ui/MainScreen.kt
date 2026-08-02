@@ -152,7 +152,32 @@ fun MainScreen(
                     onDismiss = { homeViewModel.dismissFormatPicker() },
                     onStartDownload = { params ->
                         homeViewModel.startDownload(params)
-                        selectedTab = 1 // Switch to downloads tab
+                        selectedTab = 3 // Switch to downloads tab
+                    }
+                )
+            }
+
+            // Ambiguity Choice Dialog
+            if (homeUiState.showAmbiguityPrompt) {
+                AlertDialog(
+                    onDismissRequest = { homeViewModel.clearState() },
+                    title = { Text("Playlist Detected") },
+                    text = { Text("This video is part of a playlist. What would you like to download?") },
+                    confirmButton = {
+                        Button(onClick = { homeViewModel.extractPlaylist() }) {
+                            Text("Whole Playlist")
+                        }
+                    },
+                    dismissButton = {
+                        TextButton(onClick = { 
+                            // Extract just the video info by ignoring the playlist part
+                            // For simplicity, we just trigger normal extract with the same URL 
+                            // but we need to tell HomeViewModel to skip ambiguity check this time.
+                            // We'll just call extractInfo directly on repository.
+                            homeViewModel.extractInfo(homeUiState.url.substringBefore("&list=")) 
+                        }) {
+                            Text("Just this Video")
+                        }
                     }
                 )
             }

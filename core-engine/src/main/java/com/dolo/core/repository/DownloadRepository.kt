@@ -6,6 +6,7 @@ import com.dolo.core.db.DownloadDao
 import com.dolo.core.db.DownloadEntity
 import com.dolo.core.engine.YtDlpExtractor
 import com.dolo.core.model.DownloadParams
+import com.dolo.core.model.PlaylistInfo
 import com.dolo.core.model.VideoMetadata
 import com.dolo.core.util.StorageChecker
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -28,6 +29,10 @@ class DownloadRepository @Inject constructor(
         return extractor.extractInfo(url)
     }
 
+    suspend fun extractPlaylist(url: String): Result<PlaylistInfo> {
+        return extractor.extractPlaylist(url)
+    }
+
     suspend fun checkDuplicate(url: String, formatId: String?): DownloadEntity? {
         return downloadDao.findCompletedDuplicate(url, formatId)
     }
@@ -38,6 +43,7 @@ class DownloadRepository @Inject constructor(
         val entity = DownloadEntity(
             id = downloadId,
             url = params.url,
+            title = params.fileName?.substringBeforeLast("."),
             formatId = params.formatId,
             isAudioOnly = params.isAudioOnly,
             audioFormat = params.audioFormat,
@@ -46,13 +52,19 @@ class DownloadRepository @Inject constructor(
             filePath = if (params.fileName != null) "${params.outputDir}/${params.fileName}" else null,
             trimStartSeconds = params.trimStartSeconds,
             trimEndSeconds = params.trimEndSeconds,
-            useCookies = params.useCookies
+            useCookies = params.useCookies,
+            playlistId = params.id.takeIf { params.fileName?.contains(" - ") == true }, // Simple heuristic
+            priority = 0
         )
 
         downloadDao.insertDownload(entity)
         startDownloadService(downloadId, params)
 
         downloadId
+    }
+
+    suspend fun queueBatch(paramsList: List<DownloadParams>) {
+        paramsList.forEach { queueDownload(it) }
     }
 
     fun observeQueue(): Flow<List<DownloadEntity>> {

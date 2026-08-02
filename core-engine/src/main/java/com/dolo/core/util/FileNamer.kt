@@ -34,6 +34,8 @@ object FileNamer {
         template: String? = null,
         metadata: Map<String, String> = emptyMap()
     ): String {
+        val extension = ext.trimStart('.').ifEmpty { "mp4" }
+        
         var baseName: String = when (mode) {
             NamingMode.CLEAN_TITLE -> {
                 val templateStr = template
@@ -53,7 +55,7 @@ object FileNamer {
         if (mode == NamingMode.CLEAN_TITLE && playlistIndex != null) {
             val count = totalPlaylistItems ?: 99
             val padLength = count.toString().length.coerceAtLeast(2)
-            val paddedIndex = playlistIndex.toString().padStart(padLength, '0')
+            val paddedIndex = (playlistIndex + 1).toString().padStart(padLength, '0') // 1-based indexing for filename
             baseName = "$paddedIndex - $baseName"
         }
 
@@ -64,8 +66,11 @@ object FileNamer {
             baseName = "$baseName [$startStr-$endStr]"
         }
 
-        val extension = ext.trimStart('.').ifEmpty { "mp4" }
         return "$baseName.$extension"
+    }
+
+    fun generatePlaylistFolder(title: String): String {
+        return sanitize(title)
     }
 
     fun handleCollision(destinationDir: File, fileName: String): File {

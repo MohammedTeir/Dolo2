@@ -1,10 +1,16 @@
-# Task List - Permission & Download Fixes
+# Task List - Phase 7: Batch, Playlists & Channels
 
-- [ ] Fix Onboarding Flow
-    - [ ] Update `OnboardingScreen.kt` to auto-initialize if permissions are granted.
-- [ ] Fix Download Path Error
-    - [ ] Update `StorageResolver.kt` to handle `MediaStore` move on Android 10+.
-    - [ ] Update `DownloadService.kt` to use a guaranteed writable directory for `yt-dlp`.
+- [ ] Core Engine Enhancements
+    - [ ] Update `YtDlpExtractor` for flat playlist extraction
+    - [ ] Add subfolder and index logic to `FileNamer`
+    - [ ] Implement `queueBatch` in `DownloadRepository`
+- [ ] Playlist UI
+    - [ ] Create `PlaylistSelectionScreen`
+    - [ ] Build batch quality preset components
+- [ ] Integration & Logic
+    - [ ] Implement URL ambiguity detection in `HomeViewModel`
+    - [ ] Add Choice Dialog to `MainScreen`
+    - [ ] Update `MainActivity` navigation routes
 - [ ] Verification
-    - [ ] Verify onboarding skips automatically.
-    - [ ] Verify downloads complete successfully on Android 10+.
+    - [ ] Test full playlist extraction
+    - [ ] Test batch queueing with subfolders

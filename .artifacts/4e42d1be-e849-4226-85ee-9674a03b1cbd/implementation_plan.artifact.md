@@ -1,35 +1,52 @@
-# Implementation Plan - Permission & Download Fixes
+# Implementation Plan - Phase 7: Batch, Playlists & Channels
 
-This plan addresses the "Storage Permission Required" loop and the "No such file or directory" download error on modern Android versions.
+This phase implements advanced extraction for playlists and channels, a dedicated selection UI for batches, and automatic subfolder organization for playlist downloads.
 
 ## Proposed Changes
 
-### [app]
-
-#### [MODIFY] [OnboardingScreen.kt](file:///C:/Users/teirm/AndroidStudioProjects/Dolo2/app/src/main/java/com/dolo/dolo/ui/onboarding/OnboardingScreen.kt)
-- Add a `LaunchedEffect(Unit)` to check if storage permissions are already granted.
-- If granted, automatically call `viewModel.initializeEngine()` to skip the permission prompt.
-- This ensures users who already gave permissions aren't stuck on the onboarding screen.
-
-#### [MODIFY] [DownloadService.kt](file:///C:/Users/teirm/AndroidStudioProjects/Dolo2/app/src/main/java/com/dolo/dolo/service/DownloadService.kt)
-- **Robust Path Handling**: Instead of using the public Download folder as the primary output for `yt-dlp`, we will use `context.getExternalFilesDir(null)` or `cacheDir`. These directories are always writable by the app without special permissions.
-- **Post-Download Move**: Once the download is complete in the private/scoped directory, we will move it to the final destination (Public Downloads or SAF location) using the `StorageResolver`.
-- **Error Handling**: Improve error logging to identify exactly why `yt-dlp` is failing with `Errno 2`.
-
 ### [core-engine]
 
-#### [MODIFY] [StorageResolver.kt](file:///C:/Users/teirm/AndroidStudioProjects/Dolo2/core-engine/src/main/java/com/dolo/core/util/StorageResolver.kt)
-- Ensure it handles moving files to the public `Download` folder on Android 10+ using `MediaStore` if a SAF URI is not provided.
-- This bypasses the restriction on direct file path access in public directories.
+#### [MODIFY] [YtDlpExtractor.kt](file:///C:/Users/teirm/AndroidStudioProjects/Dolo2/core-engine/src/main/java/com/dolo/core/engine/YtDlpExtractor.kt)
+- Add `extractPlaylist(url: String)`: Use `YoutubeDLRequest` with `--flat-playlist` and `--dump-single-json` to get the list of entries without resolving full formats for each.
+- Since `youtubedl-android`'s `VideoInfo` mapper might not support the `entries` field, we will execute the request and parse the raw JSON output if needed, or check if the library supports `PlaylistInfo`.
+
+#### [MODIFY] [FileNamer.kt](file:///C:/Users/teirm/AndroidStudioProjects/Dolo2/core-engine/src/main/java/com/dolo/core/util/FileNamer.kt)
+- Add `generatePlaylistFolder(title: String)`: Sanitizes the playlist title to create a safe subfolder name.
+- Enhance `generateFileName` to better handle index prefixing for playlist items.
+
+#### [MODIFY] [DownloadRepository.kt](file:///C:/Users/teirm/AndroidStudioProjects/Dolo2/core-engine/src/main/java/com/dolo/core/repository/DownloadRepository.kt)
+- Add `queueBatch(paramsList: List<DownloadParams>)` to enqueue multiple items at once.
+
+### [app]
+
+#### [NEW] [PlaylistSelectionScreen.kt](file:///C:/Users/teirm/AndroidStudioProjects/Dolo2/app/src/main/java/com/dolo/dolo/ui/home/PlaylistSelectionScreen.kt)
+- Displays playlist metadata (title, item count).
+- List of entries with checkboxes and thumbnails.
+- "Select All" / "Deselect All" options.
+- **Batch Quality Preset**: One-tap selection to apply "1080p Video" or "Best Audio" to all selected items.
+- "Add to Queue" button.
+
+#### [MODIFY] [HomeViewModel.kt](file:///C:/Users/teirm/AndroidStudioProjects/Dolo2/app/src/main/java/com/dolo/dolo/ui/home/HomeViewModel.kt)
+- Update `extractInfo` logic:
+    - If URL contains `list=` and `v=`, show a dialog: "Download just this video or the whole playlist?".
+    - If it's a playlist/channel URL, navigate to `PlaylistSelectionScreen`.
+- Handle batch queueing results.
+
+#### [MODIFY] [MainActivity.kt](file:///C:/Users/teirm/AndroidStudioProjects/Dolo2/app/src/main/java/com/dolo/dolo/MainActivity.kt)
+- Add navigation route for `PlaylistSelectionScreen`.
+
+#### [MODIFY] [MainScreen.kt](file:///C:/Users/teirm/AndroidStudioProjects/Dolo2/app/src/main/java/com/dolo/dolo/ui/MainScreen.kt)
+- Handle the "Video vs Playlist" choice dialog.
+
+## User Review Required
+
+> [!NOTE]
+> Extracting full metadata (formats) for every item in a 100-video playlist up front is slow. We will use a **Flat Extraction** first (Titles + IDs only) and resolve the actual media URLs only when the download starts for each item in the service.
 
 ## Verification Plan
 
 ### Manual Verification
-1.  **Permission Skip**:
-    - Grant storage permissions to Dolo in system settings.
-    - Launch the app.
-    - Verify it skips the "Grant Permission" screen and goes straight to engine initialization.
-2.  **Download Success**:
-    - Paste a link and start a download.
-    - Verify the download completes without the "No such file or directory" error.
-    - Verify the file appears in the phone's "Download/Dolo" folder and the Gallery.
+1.  **Playlist Detection**: Paste a YouTube playlist link. Verify the app navigates to `PlaylistSelectionScreen`.
+2.  **Batch Selection**: Select 3 specific videos from a playlist, choose "Quick MP3" preset, and tap "Download". Verify 3 tasks appear in the Queue.
+3.  **Subfolders**: Verify the 3 downloaded files are saved inside a folder named after the playlist in your Download directory.
+4.  **Ambiguity**: Paste a link that is both a video and part of a playlist. Verify the prompt appears correctly.

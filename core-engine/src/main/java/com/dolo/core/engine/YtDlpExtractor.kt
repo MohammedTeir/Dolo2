@@ -1,8 +1,10 @@
 package com.dolo.core.engine
 
 import com.dolo.core.model.FormatInfo
+import com.dolo.core.model.PlaylistInfo
 import com.dolo.core.model.VideoMetadata
 import com.yausername.youtubedl_android.YoutubeDL
+import com.yausername.youtubedl_android.YoutubeDLRequest
 import com.yausername.youtubedl_android.mapper.VideoFormat
 import com.yausername.youtubedl_android.mapper.VideoInfo
 import kotlinx.coroutines.Dispatchers
@@ -17,7 +19,26 @@ class YtDlpExtractor @Inject constructor(
     suspend fun extractInfo(url: String): Result<VideoMetadata> = withContext(Dispatchers.IO) {
         try {
             val videoInfo: VideoInfo = youtubeDL.getInfo(url)
-            Result.success(mapMetadata(videoInfo, url))
+            
+            // Check if it's a playlist but extracted as a single video (yt-dlp default for watch?v=...&list=...)
+            val isPlaylist = !videoInfo.webpageUrl.isNullOrEmpty() && (videoInfo.webpageUrl!!.contains("playlist") || videoInfo.webpageUrl!!.contains("list="))
+
+            Result.success(mapMetadata(videoInfo, url, isPlaylist))
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    suspend fun extractPlaylist(url: String): Result<PlaylistInfo> = withContext(Dispatchers.IO) {
+        try {
+            val request = YoutubeDLRequest(url)
+            request.addOption("--flat-playlist")
+            request.addOption("--dump-single-json")
+            
+            val response = youtubeDL.execute(request, null)
+            val playlistInfo = youtubeDL.objectMapper.readValue(response.out, PlaylistInfo::class.java)
+            
+            Result.success(playlistInfo)
         } catch (e: Exception) {
             Result.failure(e)
         }
@@ -48,7 +69,7 @@ class YtDlpExtractor @Inject constructor(
         }
     }
 
-    private fun mapMetadata(videoInfo: VideoInfo, url: String): VideoMetadata {
+    private fun mapMetadata(videoInfo: VideoInfo, url: String, isPlaylist: Boolean = false): VideoMetadata {
         val formats = videoInfo.formats?.map { mapFormat(it) } ?: emptyList()
         return VideoMetadata(
             id = videoInfo.id ?: "",
@@ -58,7 +79,8 @@ class YtDlpExtractor @Inject constructor(
             durationSeconds = videoInfo.duration,
             description = videoInfo.description,
             formats = formats,
-            originalUrl = url
+            originalUrl = url,
+            isPlaylist = isPlaylist
         )
     }
 
