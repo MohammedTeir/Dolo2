@@ -19,12 +19,13 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AudioFile
 import androidx.compose.material.icons.filled.Bolt
+import androidx.compose.material.icons.filled.ContentCut
 import androidx.compose.material.icons.filled.DataSaverOn
 import androidx.compose.material.icons.filled.HighQuality
 import androidx.compose.material.icons.filled.MusicNote
+import androidx.compose.material.icons.filled.PlayCircle
 import androidx.compose.material.icons.filled.VideoFile
 import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -32,8 +33,11 @@ import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.RangeSlider
 import androidx.compose.material3.SheetState
 import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.SegmentedButton
@@ -60,6 +64,7 @@ import coil3.compose.AsyncImage
 import com.dolo.core.model.DownloadParams
 import com.dolo.core.model.FormatInfo
 import com.dolo.core.model.VideoMetadata
+import com.dolo.dolo.ui.player.PreviewPlayerSheet
 
 private val AUDIO_FORMATS = listOf("mp3", "m4a", "opus", "flac")
 private val BITRATE_OPTIONS = listOf(128, 192, 256, 320)
@@ -83,6 +88,31 @@ fun FormatPickerSheet(
         }
     }
 
+    var previewUrl by remember { mutableStateOf<String?>(null) }
+    var isTrimEnabled by remember { mutableStateOf(false) }
+    val maxDuration = remember(metadata) { (metadata.durationSeconds.takeIf { it > 0 } ?: 300).toFloat() }
+    var trimStartSeconds by remember { mutableFloatStateOf(0f) }
+    var trimEndSeconds by remember { mutableFloatStateOf(maxDuration) }
+
+    fun buildParams(
+        formatId: String? = null,
+        isAudioOnly: Boolean = false,
+        audioFormat: String? = null,
+        audioBitrate: Int? = null
+    ): DownloadParams {
+        return DownloadParams(
+            id = "",
+            url = metadata.originalUrl,
+            formatId = formatId,
+            outputDir = defaultOutputDir,
+            isAudioOnly = isAudioOnly,
+            audioFormat = audioFormat,
+            audioBitrate = audioBitrate,
+            trimStartSeconds = if (isTrimEnabled) trimStartSeconds else null,
+            trimEndSeconds = if (isTrimEnabled) trimEndSeconds else null
+        )
+    }
+
     ModalBottomSheet(
         onDismissRequest = onDismiss,
         sheetState = sheetState,
@@ -97,17 +127,40 @@ fun FormatPickerSheet(
                 .padding(bottom = 32.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            // Header: Thumbnail + Title + Uploader
+            // Header: Thumbnail + Title + Preview Button
             item {
-                MetadataHeader(metadata)
+                MetadataHeader(
+                    metadata = metadata,
+                    onPreviewClick = {
+                        val firstStreamableUrl = metadata.formats.firstOrNull { !it.url.isNullOrEmpty() }?.url
+                            ?: metadata.originalUrl
+                        previewUrl = firstStreamableUrl
+                    }
+                )
+            }
+
+            // Trim Segment Section
+            item {
+                TrimSection(
+                    durationSeconds = maxDuration,
+                    isTrimEnabled = isTrimEnabled,
+                    onToggleTrim = { isTrimEnabled = it },
+                    startSeconds = trimStartSeconds,
+                    endSeconds = trimEndSeconds,
+                    onRangeChange = { start, end ->
+                        trimStartSeconds = start
+                        trimEndSeconds = end
+                    }
+                )
             }
 
             // Smart Quality Presets
             item {
                 SmartQualityPresets(
                     metadata = metadata,
-                    outputDir = defaultOutputDir,
-                    onStartDownload = onStartDownload
+                    onStartDownload = { isAudio, fmtId, audFormat, audBitrate ->
+                        onStartDownload(buildParams(formatId = fmtId, isAudioOnly = isAudio, audioFormat = audFormat, audioBitrate = audBitrate))
+                    }
                 )
             }
 
@@ -130,12 +183,12 @@ fun FormatPickerSheet(
                 }
             }
 
-            // Audio-only section
+            // Audio-only conversion section
             item {
                 AudioOnlySection(
-                    metadata = metadata,
-                    outputDir = defaultOutputDir,
-                    onStartDownload = onStartDownload
+                    onStartDownload = { audFormat, audBitrate ->
+                        onStartDownload(buildParams(isAudioOnly = true, audioFormat = audFormat, audioBitrate = audBitrate))
+                    }
                 )
             }
 
@@ -159,16 +212,11 @@ fun FormatPickerSheet(
                     FormatRow(
                         format = format,
                         isVideo = true,
+                        onPreviewClick = if (!format.url.isNullOrEmpty()) {
+                            { previewUrl = format.url }
+                        } else null,
                         onClick = {
-                            onStartDownload(
-                                DownloadParams(
-                                    id = "",
-                                    url = metadata.originalUrl,
-                                    formatId = format.formatId,
-                                    outputDir = defaultOutputDir,
-                                    isAudioOnly = false
-                                )
-                            )
+                            onStartDownload(buildParams(formatId = format.formatId, isAudioOnly = false))
                         }
                     )
                 }
@@ -193,26 +241,33 @@ fun FormatPickerSheet(
                     FormatRow(
                         format = format,
                         isVideo = false,
+                        onPreviewClick = if (!format.url.isNullOrEmpty()) {
+                            { previewUrl = format.url }
+                        } else null,
                         onClick = {
-                            onStartDownload(
-                                DownloadParams(
-                                    id = "",
-                                    url = metadata.originalUrl,
-                                    formatId = format.formatId,
-                                    outputDir = defaultOutputDir,
-                                    isAudioOnly = true
-                                )
-                            )
+                            onStartDownload(buildParams(formatId = format.formatId, isAudioOnly = true))
                         }
                     )
                 }
             }
         }
     }
+
+    // Preview player sheet overlay
+    previewUrl?.let { url ->
+        PreviewPlayerSheet(
+            streamUrl = url,
+            title = metadata.title,
+            onDismiss = { previewUrl = null }
+        )
+    }
 }
 
 @Composable
-private fun MetadataHeader(metadata: VideoMetadata) {
+private fun MetadataHeader(
+    metadata: VideoMetadata,
+    onPreviewClick: () -> Unit
+) {
     Row(
         modifier = Modifier.fillMaxWidth(),
         verticalAlignment = Alignment.Top
@@ -259,14 +314,111 @@ private fun MetadataHeader(metadata: VideoMetadata) {
                 )
             }
         }
+
+        IconButton(onClick = onPreviewClick) {
+            Icon(
+                imageVector = Icons.Default.PlayCircle,
+                contentDescription = "Preview media",
+                tint = MaterialTheme.colorScheme.primary
+            )
+        }
+    }
+}
+
+@Composable
+private fun TrimSection(
+    durationSeconds: Float,
+    isTrimEnabled: Boolean,
+    onToggleTrim: (Boolean) -> Unit,
+    startSeconds: Float,
+    endSeconds: Float,
+    onRangeChange: (Float, Float) -> Unit
+) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .animateContentSize(),
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceContainerLow
+        )
+    ) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable { onToggleTrim(!isTrimEnabled) },
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(
+                    imageVector = Icons.Default.ContentCut,
+                    contentDescription = null,
+                    tint = if (isTrimEnabled) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.size(20.dp)
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(
+                    text = if (isTrimEnabled) "Clip / Trim segment: ON" else "Trim segment (Optional)",
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.SemiBold,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    modifier = Modifier.weight(1f)
+                )
+                Text(
+                    text = if (isTrimEnabled) "▲" else "▼",
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+
+            if (isTrimEnabled) {
+                Spacer(modifier = Modifier.height(12.dp))
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Text(
+                        text = "Start: ${formatDuration(startSeconds.toInt())}",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                    Text(
+                        text = "End: ${formatDuration(endSeconds.toInt())}",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                }
+
+                Slider(
+                    value = startSeconds,
+                    onValueChange = { newStart ->
+                        if (newStart < endSeconds - 1f) {
+                            onRangeChange(newStart, endSeconds)
+                        }
+                    },
+                    valueRange = 0f..durationSeconds,
+                    modifier = Modifier.fillMaxWidth()
+                )
+
+                Slider(
+                    value = endSeconds,
+                    onValueChange = { newEnd ->
+                        if (newEnd > startSeconds + 1f) {
+                            onRangeChange(startSeconds, newEnd)
+                        }
+                    },
+                    valueRange = 0f..durationSeconds,
+                    modifier = Modifier.fillMaxWidth()
+                )
+            }
+        }
     }
 }
 
 @Composable
 private fun SmartQualityPresets(
     metadata: VideoMetadata,
-    outputDir: String,
-    onStartDownload: (DownloadParams) -> Unit
+    onStartDownload: (isAudioOnly: Boolean, formatId: String?, audioFormat: String?, audioBitrate: Int?) -> Unit
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Text(
@@ -280,62 +432,28 @@ private fun SmartQualityPresets(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            // Best Quality
             PresetButton(
                 modifier = Modifier.weight(1f),
                 icon = { Icon(Icons.Default.HighQuality, contentDescription = null, modifier = Modifier.size(18.dp)) },
                 label = "Best",
                 sublabel = "Quality",
-                onClick = {
-                    onStartDownload(
-                        DownloadParams(
-                            id = "",
-                            url = metadata.originalUrl,
-                            formatId = "bestvideo+bestaudio/best",
-                            outputDir = outputDir,
-                            isAudioOnly = false
-                        )
-                    )
-                }
+                onClick = { onStartDownload(false, "bestvideo+bestaudio/best", null, null) }
             )
 
-            // Data Saver
             PresetButton(
                 modifier = Modifier.weight(1f),
                 icon = { Icon(Icons.Default.DataSaverOn, contentDescription = null, modifier = Modifier.size(18.dp)) },
                 label = "Data",
                 sublabel = "Saver",
-                onClick = {
-                    onStartDownload(
-                        DownloadParams(
-                            id = "",
-                            url = metadata.originalUrl,
-                            formatId = "bestvideo[height<=480]+bestaudio/best[height<=480]/best",
-                            outputDir = outputDir,
-                            isAudioOnly = false
-                        )
-                    )
-                }
+                onClick = { onStartDownload(false, "bestvideo[height<=480]+bestaudio/best[height<=480]/best", null, null) }
             )
 
-            // Quick MP3
             PresetButton(
                 modifier = Modifier.weight(1f),
                 icon = { Icon(Icons.Default.MusicNote, contentDescription = null, modifier = Modifier.size(18.dp)) },
                 label = "Quick",
                 sublabel = "MP3",
-                onClick = {
-                    onStartDownload(
-                        DownloadParams(
-                            id = "",
-                            url = metadata.originalUrl,
-                            outputDir = outputDir,
-                            isAudioOnly = true,
-                            audioFormat = "mp3",
-                            audioBitrate = 192
-                        )
-                    )
-                }
+                onClick = { onStartDownload(true, null, "mp3", 192) }
             )
         }
     }
@@ -350,8 +468,7 @@ private fun PresetButton(
     onClick: () -> Unit
 ) {
     Card(
-        modifier = modifier
-            .clickable(onClick = onClick),
+        modifier = modifier.clickable(onClick = onClick),
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.primaryContainer
@@ -384,13 +501,11 @@ private fun PresetButton(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun AudioOnlySection(
-    metadata: VideoMetadata,
-    outputDir: String,
-    onStartDownload: (DownloadParams) -> Unit
+    onStartDownload: (audioFormat: String, audioBitrate: Int) -> Unit
 ) {
     var expanded by remember { mutableStateOf(false) }
-    var selectedFormatIndex by remember { mutableIntStateOf(0) } // mp3 default
-    var selectedBitrateIndex by remember { mutableIntStateOf(1) } // 192 default
+    var selectedFormatIndex by remember { mutableIntStateOf(0) }
+    var selectedBitrateIndex by remember { mutableIntStateOf(1) }
 
     Card(
         modifier = Modifier
@@ -431,7 +546,6 @@ private fun AudioOnlySection(
             if (expanded) {
                 Spacer(modifier = Modifier.height(12.dp))
 
-                // Format selector
                 Text(
                     text = "Format",
                     style = MaterialTheme.typography.labelMedium,
@@ -453,7 +567,6 @@ private fun AudioOnlySection(
 
                 Spacer(modifier = Modifier.height(12.dp))
 
-                // Bitrate selector
                 Text(
                     text = "Bitrate: ${BITRATE_OPTIONS[selectedBitrateIndex]}kbps",
                     style = MaterialTheme.typography.labelMedium,
@@ -481,18 +594,11 @@ private fun AudioOnlySection(
 
                 Spacer(modifier = Modifier.height(12.dp))
 
-                // Download audio button
                 Button(
                     onClick = {
                         onStartDownload(
-                            DownloadParams(
-                                id = "",
-                                url = metadata.originalUrl,
-                                outputDir = outputDir,
-                                isAudioOnly = true,
-                                audioFormat = AUDIO_FORMATS[selectedFormatIndex],
-                                audioBitrate = BITRATE_OPTIONS[selectedBitrateIndex]
-                            )
+                            AUDIO_FORMATS[selectedFormatIndex],
+                            BITRATE_OPTIONS[selectedBitrateIndex]
                         )
                     },
                     modifier = Modifier.fillMaxWidth(),
@@ -515,6 +621,7 @@ private fun AudioOnlySection(
 private fun FormatRow(
     format: FormatInfo,
     isVideo: Boolean,
+    onPreviewClick: (() -> Unit)?,
     onClick: () -> Unit
 ) {
     Card(
@@ -586,7 +693,16 @@ private fun FormatRow(
                 )
             }
 
-            Spacer(modifier = Modifier.width(8.dp))
+            if (onPreviewClick != null) {
+                IconButton(onClick = onPreviewClick) {
+                    Icon(
+                        imageVector = Icons.Default.PlayCircle,
+                        contentDescription = "Preview format stream",
+                        tint = MaterialTheme.colorScheme.secondary,
+                        modifier = Modifier.size(20.dp)
+                    )
+                }
+            }
 
             Icon(
                 imageVector = Icons.Default.Bolt,
@@ -620,10 +736,8 @@ private fun formatFileSize(bytes: Long): String {
 
 private fun extractHeight(resolution: String?): Int {
     if (resolution == null) return 0
-    // Try extracting height from "WxH" format
     val matchWxH = Regex("""(\d+)x(\d+)""").find(resolution)
     if (matchWxH != null) return matchWxH.groupValues[2].toIntOrNull() ?: 0
-    // Try extracting from "Hp" format
     val matchP = Regex("""(\d+)p""").find(resolution)
     if (matchP != null) return matchP.groupValues[1].toIntOrNull() ?: 0
     return 0

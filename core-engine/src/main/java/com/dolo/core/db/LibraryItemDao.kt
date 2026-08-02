@@ -20,6 +20,9 @@ interface LibraryItemDao {
     @Query("SELECT * FROM library_items WHERE sourceUrl = :sourceUrl LIMIT 1")
     suspend fun getItemBySourceUrl(sourceUrl: String): LibraryItemEntity?
 
+    @Query("UPDATE library_items SET title = :newTitle, filePath = :newFilePath WHERE id = :id")
+    suspend fun updateTitleAndPath(id: String, newTitle: String, newFilePath: String)
+
     @Query("DELETE FROM library_items WHERE id = :id")
     suspend fun deleteItem(id: String)
 }

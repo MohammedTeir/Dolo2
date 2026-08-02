@@ -77,6 +77,10 @@ dependencies {
     implementation(libs.coil.compose)
     implementation(libs.coil.network.okhttp)
 
+    // Media3 / ExoPlayer
+    implementation(libs.androidx.media3.exoplayer)
+    implementation(libs.androidx.media3.ui)
+
     // Material Icons Extended
     implementation(libs.androidx.compose.material.icons.extended)
 
