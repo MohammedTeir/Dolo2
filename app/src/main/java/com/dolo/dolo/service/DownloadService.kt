@@ -105,16 +105,25 @@ class DownloadService : Service() {
 
     private fun executeDownload(params: DownloadParams) {
         serviceScope.launch {
+            val title = params.fileName ?: downloadDao.getDownloadById(params.id)?.title ?: "Media Download"
             try {
                 downloadDao.updateStatus(params.id, "DOWNLOADING")
-                updateNotification("Downloading...", 0f, downloadId = params.id)
+                updateNotification(title = title, text = "Downloading...", progress = 0f, downloadId = params.id)
+
+                // Ensure output directory exists on disk
+                val outputDirFile = File(params.outputDir)
+                if (!outputDirFile.exists()) {
+                    outputDirFile.mkdirs()
+                }
 
                 val request = DownloadRequestBuilder.buildRequest(params)
 
                 youtubeDL.execute(request, params.id) { progress, etaInSeconds, line ->
                     serviceScope.launch {
-                        downloadDao.updateProgress(params.id, 0L, progress)
-                        updateNotification("Downloading: ${progress.toInt()}%", progress, downloadId = params.id)
+                        val validProgress = if (progress < 0f) 0f else progress
+                        downloadDao.updateProgress(params.id, 0L, validProgress)
+                        val statusText = if (progress < 0f) "Downloading..." else "Downloading: ${validProgress.toInt()}%"
+                        updateNotification(title = title, text = statusText, progress = validProgress, downloadId = params.id)
                     }
                 }
 
@@ -126,28 +135,30 @@ class DownloadService : Service() {
                 val libraryItem = LibraryItemEntity(
                     id = params.id,
                     sourceUrl = params.url,
-                    title = params.fileName ?: "Download",
+                    title = title,
                     filePath = completedFile.absolutePath,
                     fileSizeBytes = if (completedFile.exists()) completedFile.length() else 0L,
                     isAudio = params.isAudioOnly
                 )
                 libraryItemDao.insertLibraryItem(libraryItem)
 
-                updateNotification("Download complete", 100f, downloadId = params.id)
+                updateNotification(title = title, text = "Download complete", progress = 100f, downloadId = params.id)
             } catch (e: Exception) {
                 e.printStackTrace()
-                downloadDao.updateStatus(params.id, "FAILED", errorMessage = e.localizedMessage)
-                updateNotification("Download failed", 0f, downloadId = params.id)
+                val errorMsg = e.localizedMessage ?: e.message ?: "Unknown download error"
+                downloadDao.updateStatus(params.id, "FAILED", errorMessage = errorMsg)
+                updateNotification(title = title, text = "Download failed: $errorMsg", progress = 0f, downloadId = params.id)
             }
         }
     }
 
-    private fun buildNotification(text: String, progress: Float, downloadedBytes: Long = 0, totalBytes: Long = 0, downloadId: String? = null): android.app.Notification {
+    private fun buildNotification(title: String, text: String, progress: Float, downloadedBytes: Long = 0, totalBytes: Long = 0, downloadId: String? = null): android.app.Notification {
+        val isIndeterminate = progress <= 0f && text.startsWith("Downloading")
         val builder = NotificationCompat.Builder(this, CHANNEL_ID)
-            .setContentTitle("Dolo Downloader")
+            .setContentTitle(title)
             .setContentText(text)
             .setSmallIcon(android.R.drawable.stat_sys_download)
-            .setProgress(100, progress.toInt(), progress == 0f && text.contains("Downloading"))
+            .setProgress(100, progress.toInt().coerceAtLeast(0), isIndeterminate)
             .setOngoing(progress < 100f && !text.contains("cancelled") && !text.contains("failed") && !text.contains("paused"))
 
         if (downloadId != null && text.startsWith("Downloading")) {
@@ -180,9 +191,9 @@ class DownloadService : Service() {
         return builder.build()
     }
 
-    private fun updateNotification(text: String, progress: Float, downloadId: String? = null) {
+    private fun updateNotification(text: String, progress: Float, title: String = "Dolo Downloader", downloadId: String? = null) {
         val manager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-        manager.notify(NOTIFICATION_ID, buildNotification(text, progress, downloadId = downloadId))
+        manager.notify(NOTIFICATION_ID, buildNotification(title = title, text = text, progress = progress, downloadId = downloadId))
     }
 
     private fun createNotificationChannel() {

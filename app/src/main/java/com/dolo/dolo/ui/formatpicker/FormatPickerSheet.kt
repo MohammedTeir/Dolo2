@@ -71,9 +71,16 @@ fun FormatPickerSheet(
     onStartDownload: (DownloadParams) -> Unit,
     sheetState: SheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
 ) {
-    val defaultOutputDir = Environment.getExternalStoragePublicDirectory(
-        Environment.DIRECTORY_DOWNLOADS
-    ).absolutePath + "/Dolo"
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val defaultOutputDir = remember(context) {
+        val publicDoloDir = File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS), "Dolo")
+        if (publicDoloDir.exists() || publicDoloDir.mkdirs()) {
+            publicDoloDir.absolutePath
+        } else {
+            context.getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS)?.absolutePath
+                ?: publicDoloDir.absolutePath
+        }
+    }
 
     ModalBottomSheet(
         onDismissRequest = onDismiss,

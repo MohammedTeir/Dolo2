@@ -65,8 +65,9 @@ object DownloadRequestBuilder {
             request.addOption("--embed-thumbnail")
         }
 
-        // Compatibility flags
+        // Compatibility & warning suppression flags
         request.addOption("--no-mtime")
+        request.addOption("--no-warnings")
 
         return request
     }
