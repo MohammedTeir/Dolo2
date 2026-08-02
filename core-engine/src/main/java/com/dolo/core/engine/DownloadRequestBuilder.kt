@@ -10,8 +10,9 @@ object DownloadRequestBuilder {
         val request = YoutubeDLRequest(params.url)
 
         // Output template / location
-        val outputTemplate = if (!params.fileName.isNull_Blank()) {
-            File(params.outputDir, params.fileName).absolutePath
+        val fileName = params.fileName
+        val outputTemplate = if (!fileName.isNullOrBlank()) {
+            File(params.outputDir, fileName).absolutePath
         } else {
             File(params.outputDir, "%(title)s.%(ext)s").absolutePath
         }
@@ -25,8 +26,11 @@ object DownloadRequestBuilder {
             if (params.audioBitrate != null && params.audioBitrate > 0) {
                 request.addOption("--audio-quality", "${params.audioBitrate}k")
             }
-        } else if (!params.formatId.isNull_Blank()) {
-            request.addOption("-f", params.formatId)
+        } else {
+            val formatId = params.formatId
+            if (!formatId.isNullOrBlank()) {
+                request.addOption("-f", formatId)
+            }
         }
 
         // Clip / Trim download section
@@ -37,8 +41,9 @@ object DownloadRequestBuilder {
         }
 
         // Cookies file
-        if (params.useCookies && !params.cookiesPath.isNull_Blank()) {
-            val cookiesFile = File(params.cookiesPath)
+        val cookiesPath = params.cookiesPath
+        if (params.useCookies && !cookiesPath.isNullOrBlank()) {
+            val cookiesFile = File(cookiesPath)
             if (cookiesFile.exists()) {
                 request.addOption("--cookies", cookiesFile.absolutePath)
             }
@@ -74,6 +79,4 @@ object DownloadRequestBuilder {
         val millis = ((seconds - totalSecs) * 1000).toInt()
         return String.format("%02d:%02d:%02d.%03d", hrs, mins, secs, millis)
     }
-
-    private fun String?.isNull_Blank(): Boolean = this == null || this.trim().isEmpty()
 }

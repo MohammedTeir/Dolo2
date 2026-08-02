@@ -46,12 +46,13 @@ class YtDlpExtractor @Inject constructor(
             else -> null
         }
 
+        val fileSize = format.fileSize
         return FormatInfo(
             formatId = format.formatId ?: "best",
             ext = format.ext ?: "mp4",
             resolution = resolution,
             fps = format.fps,
-            fileSizeBytes = format.filesize.toLong(),
+            fileSizeBytes = if (fileSize > 0) fileSize else 0L,
             videoCodec = format.vcodec,
             audioCodec = format.acodec,
             isVideoOnly = isVideoOnly,

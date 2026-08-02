@@ -71,13 +71,11 @@ class MainActivity : ComponentActivity() {
     private fun handleIntent(intent: Intent?) {
         if (intent?.action == Intent.ACTION_SEND && intent.type == "text/plain") {
             val text = intent.getStringExtra(Intent.EXTRA_TEXT)
-            if (!text.isNull_Blank()) {
+            if (!text.isNullOrBlank()) {
                 sharedUrl = text.trim()
             }
         }
     }
-
-    private fun String?.isNull_Blank(): Boolean = this == null || this.trim().isEmpty()
 }
 
 @Composable

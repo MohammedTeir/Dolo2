@@ -36,8 +36,9 @@ object FileNamer {
     ): String {
         var baseName: String = when (mode) {
             NamingMode.CLEAN_TITLE -> {
-                if (!template.isNull_Blank() && metadata.isNotEmpty()) {
-                    applyTemplate(template, metadata)
+                val templateStr = template
+                if (!templateStr.isNullOrBlank() && metadata.isNotEmpty()) {
+                    applyTemplate(templateStr, metadata)
                 } else {
                     sanitize(title ?: "download")
                 }
@@ -84,16 +85,18 @@ object FileNamer {
     }
 
     fun extractOriginalFilename(url: String?, contentDisposition: String?): String? {
-        if (!contentDisposition.isNull_Blank()) {
+        val disposition = contentDisposition
+        if (!disposition.isNullOrBlank()) {
             val filenameMatch = Regex("filename\\*=.*?''([^;]+)|filename=\"?([^\";]+)\"?")
-                .find(contentDisposition)
+                .find(disposition)
             val name = filenameMatch?.groupValues?.get(1)?.ifEmpty { null }
                 ?: filenameMatch?.groupValues?.get(2)?.ifEmpty { null }
             if (name != null) return sanitize(name)
         }
 
-        if (!url.isNull_Blank()) {
-            val path = url.substringBefore('?').substringBefore('#')
+        val rawUrl = url
+        if (!rawUrl.isNullOrBlank()) {
+            val path = rawUrl.substringBefore('?').substringBefore('#')
             val lastSegment = path.substringAfterLast('/')
             if (lastSegment.isNotEmpty() && lastSegment.contains('.')) {
                 val nameWithoutExt = lastSegment.substringBeforeLast('.')
@@ -121,6 +124,4 @@ object FileNamer {
             String.format("%02d-%02d", mins, secs)
         }
     }
-
-    private fun String?.isNull_Blank(): Boolean = this == null || this.trim().isEmpty()
 }
