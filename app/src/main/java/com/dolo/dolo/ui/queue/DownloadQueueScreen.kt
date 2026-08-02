@@ -244,10 +244,11 @@ private fun DownloadQueueItem(
             }
 
             // Error message for failed downloads
-            if (download.status == "FAILED" && !download.errorMessage.isNullOrBlank()) {
+            val errorMessage = download.errorMessage
+            if (download.status == "FAILED" && !errorMessage.isNullOrBlank()) {
                 Spacer(modifier = Modifier.height(4.dp))
                 Text(
-                    text = download.errorMessage,
+                    text = errorMessage,
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.error,
                     maxLines = 2,

@@ -232,9 +232,10 @@ private fun MetadataHeader(metadata: VideoMetadata) {
                 color = MaterialTheme.colorScheme.onSurface
             )
 
-            if (!metadata.uploader.isNullOrBlank()) {
+            val uploader = metadata.uploader
+            if (!uploader.isNullOrBlank()) {
                 Text(
-                    text = metadata.uploader,
+                    text = uploader,
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     maxLines = 1,

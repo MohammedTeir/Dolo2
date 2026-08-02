@@ -42,6 +42,7 @@ enum class NavigationTab(
     LIBRARY("Library", Icons.Filled.VideoLibrary, Icons.Outlined.VideoLibrary)
 }
 
+@OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
 @Composable
 fun MainScreen(
     sharedUrl: String? = null,

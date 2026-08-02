@@ -89,7 +89,7 @@ class HomeViewModel @Inject constructor(
             val title = _uiState.value.extractedMetadata?.title
             val finalParams = if (params.fileName == null && title != null) {
                 val ext = if (params.isAudioOnly) (params.audioFormat ?: "mp3") else "mp4"
-                val sanitizedTitle = com.dolo.core.util.FileNamer.sanitizeFileName(title)
+                val sanitizedTitle = com.dolo.core.util.FileNamer.sanitize(title)
                 params.copy(fileName = "$sanitizedTitle.$ext")
             } else {
                 params
