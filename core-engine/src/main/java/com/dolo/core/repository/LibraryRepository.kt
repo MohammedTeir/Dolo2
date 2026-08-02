@@ -25,8 +25,9 @@ class LibraryRepository @Inject constructor(
             if (deleteFileOnDisk) {
                 try {
                     File(item.filePath).delete()
-                    if (!item.thumbnailPath.isNull_Empty()) {
-                        File(item.thumbnailPath).delete()
+                    val thumbnailPath = item.thumbnailPath
+                    if (!thumbnailPath.isNullOrBlank()) {
+                        File(thumbnailPath).delete()
                     }
                 } catch (e: Exception) {
                     e.printStackTrace()
@@ -35,6 +36,4 @@ class LibraryRepository @Inject constructor(
             libraryItemDao.deleteItem(id)
         }
     }
-
-    private fun String?.isNull_Empty(): Boolean = this == null || this.isEmpty()
 }

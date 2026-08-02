@@ -22,7 +22,7 @@ object DatabaseModule {
             context,
             DoloDatabase::class.java,
             "dolo_database.db"
-        ).fallbackToDestructiveMigration().build()
+        ).fallbackToDestructiveMigration(true).build()
     }
 
     @Provides
