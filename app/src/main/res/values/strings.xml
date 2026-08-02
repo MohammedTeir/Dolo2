@@ -1,3 +1,5 @@
 <resources>
     <string name="app_name">Dolo</string>
+    <string name="shortcut_paste_label">Paste &amp; Download</string>
+    <string name="shortcut_paste_long_label">Paste from clipboard and start download</string>
 </resources>

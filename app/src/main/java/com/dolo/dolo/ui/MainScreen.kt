@@ -12,9 +12,11 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.VideoLibrary
 import androidx.compose.material.icons.outlined.Download
 import androidx.compose.material.icons.outlined.Home
+import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material.icons.outlined.VideoLibrary
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -39,13 +41,15 @@ enum class NavigationTab(
 ) {
     HOME("Home", Icons.Filled.Home, Icons.Outlined.Home),
     QUEUE("Downloads", Icons.Filled.Download, Icons.Outlined.Download),
-    LIBRARY("Library", Icons.Filled.VideoLibrary, Icons.Outlined.VideoLibrary)
+    LIBRARY("Library", Icons.Filled.VideoLibrary, Icons.Outlined.VideoLibrary),
+    SETTINGS("Settings", Icons.Filled.Settings, Icons.Outlined.Settings)
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MainScreen(
     sharedUrl: String? = null,
+    onNavigateToSettings: () -> Unit = {},
     homeViewModel: HomeViewModel = hiltViewModel(),
     queueViewModel: DownloadQueueViewModel = hiltViewModel()
 ) {
@@ -109,6 +113,13 @@ fun MainScreen(
                     LibraryScreen(
                         onPlayItem = { playingItem = it }
                     )
+                }
+                NavigationTab.SETTINGS -> {
+                    // This is just a placeholder because we use Navigation to another screen
+                    LaunchedEffect(Unit) {
+                        onNavigateToSettings()
+                        selectedTab = 0 // Reset to home when coming back if we want
+                    }
                 }
             }
 

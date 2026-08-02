@@ -22,6 +22,7 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ContentPaste
 import androidx.compose.material.icons.filled.Download
+import androidx.compose.material.icons.filled.LibraryAdd
 import androidx.compose.material.icons.filled.Link
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -35,8 +36,12 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -48,6 +53,9 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 
 @Composable
@@ -59,12 +67,33 @@ fun HomeScreen(
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val context = LocalContext.current
     val keyboardController = LocalSoftwareKeyboardController.current
+    val lifecycleOwner = LocalLifecycleOwner.current
+    var showBatchImport by remember { mutableStateOf(false) }
 
     // Handle shared URL from intent
     LaunchedEffect(sharedUrl) {
-        if (!sharedUrl.isNullOrBlank() && sharedUrl != uiState.url) {
-            viewModel.onUrlChanged(sharedUrl)
-            viewModel.extractInfo(sharedUrl)
+        if (!sharedUrl.isNullOrBlank()) {
+            if (sharedUrl == "CLIPBOARD_PASTE_ACTION") {
+                viewModel.pasteFromClipboard(context)
+            } else if (sharedUrl != uiState.url) {
+                viewModel.onUrlChanged(sharedUrl)
+                viewModel.extractInfo(sharedUrl)
+            }
+        }
+    }
+
+    // Clipboard watcher on resume
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) {
+                // Here we would check if settings.clipboardWatcherEnabled is true
+                // For MVP, we'll just check if there's a link and maybe show a snackbar or just auto-paste if empty
+                // We'll skip auto-paste to avoid being annoying, but shortcut handles it.
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose {
+            lifecycleOwner.lifecycle.removeObserver(observer)
         }
     }
 
@@ -154,6 +183,20 @@ fun HomeScreen(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
+            // Batch Import button
+            IconButton(
+                onClick = { showBatchImport = true },
+                modifier = Modifier
+                    .size(56.dp)
+                    .padding(4.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.Default.LibraryAdd,
+                    contentDescription = "Batch Import",
+                    tint = MaterialTheme.colorScheme.primary
+                )
+            }
+
             // Paste & Go button
             Button(
                 onClick = {
@@ -268,5 +311,14 @@ fun HomeScreen(
             )
             Spacer(modifier = Modifier.height(48.dp))
         }
+    }
+
+    if (showBatchImport) {
+        BatchImportSheet(
+            onDismiss = { showBatchImport = false },
+            onImport = { urls ->
+                viewModel.importBatch(urls)
+            }
+        )
     }
 }

@@ -20,6 +20,12 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import com.dolo.dolo.ui.onboarding.OnboardingScreen
+import com.dolo.dolo.ui.settings.AboutScreen
+import com.dolo.dolo.ui.settings.AudioSettingsScreen
+import com.dolo.dolo.ui.settings.DownloadSettingsScreen
+import com.dolo.dolo.ui.settings.EngineSettingsScreen
+import com.dolo.dolo.ui.settings.GeneralSettingsScreen
+import com.dolo.dolo.ui.settings.SettingsHubScreen
 import com.dolo.dolo.ui.theme.DoloTheme
 import dagger.hilt.android.AndroidEntryPoint
 
@@ -55,7 +61,41 @@ class MainActivity : ComponentActivity() {
                         }
 
                         composable("main") {
-                            com.dolo.dolo.ui.MainScreen(sharedUrl = sharedUrl)
+                            com.dolo.dolo.ui.MainScreen(
+                                sharedUrl = sharedUrl,
+                                onNavigateToSettings = { navController.navigate("settings_hub") }
+                            )
+                        }
+
+                        composable("settings_hub") {
+                            SettingsHubScreen(
+                                onBack = { navController.popBackStack() },
+                                onNavigateToGeneral = { navController.navigate("settings_general") },
+                                onNavigateToDownload = { navController.navigate("settings_download") },
+                                onNavigateToAudio = { navController.navigate("settings_audio") },
+                                onNavigateToEngine = { navController.navigate("settings_engine") },
+                                onNavigateToAbout = { navController.navigate("settings_about") }
+                            )
+                        }
+
+                        composable("settings_general") {
+                            GeneralSettingsScreen(onBack = { navController.popBackStack() })
+                        }
+
+                        composable("settings_download") {
+                            DownloadSettingsScreen(onBack = { navController.popBackStack() })
+                        }
+
+                        composable("settings_audio") {
+                            AudioSettingsScreen(onBack = { navController.popBackStack() })
+                        }
+
+                        composable("settings_engine") {
+                            EngineSettingsScreen(onBack = { navController.popBackStack() })
+                        }
+
+                        composable("settings_about") {
+                            AboutScreen(onBack = { navController.popBackStack() })
                         }
                     }
                 }
@@ -69,10 +109,19 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun handleIntent(intent: Intent?) {
-        if (intent?.action == Intent.ACTION_SEND && intent.type == "text/plain") {
-            val text = intent.getStringExtra(Intent.EXTRA_TEXT)
-            if (!text.isNullOrBlank()) {
-                sharedUrl = text.trim()
+        if (intent == null) return
+        
+        when (intent.action) {
+            Intent.ACTION_SEND -> {
+                if (intent.type == "text/plain") {
+                    val text = intent.getStringExtra(Intent.EXTRA_TEXT)
+                    if (!text.isNullOrBlank()) {
+                        sharedUrl = text.trim()
+                    }
+                }
+            }
+            "com.dolo.dolo.ACTION_PASTE_DOWNLOAD" -> {
+                sharedUrl = "CLIPBOARD_PASTE_ACTION"
             }
         }
     }

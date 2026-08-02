@@ -99,6 +99,14 @@ class HomeViewModel @Inject constructor(
         }
     }
 
+    fun importBatch(urls: List<String>) {
+        viewModelScope.launch {
+            urls.forEach { url ->
+                extractInfo(url)
+            }
+        }
+    }
+
     fun dismissFormatPicker() {
         _uiState.value = _uiState.value.copy(
             extractedMetadata = null,
