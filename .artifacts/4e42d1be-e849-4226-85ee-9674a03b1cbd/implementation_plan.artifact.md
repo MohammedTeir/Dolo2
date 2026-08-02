@@ -1,67 +1,64 @@
-# Implementation Plan - Phase 4: Queue & Reliability
+# Implementation Plan - Phase 5: Settings & Customization
 
-Start Phase 4 of the Dolo specification, focusing on download queue management, concurrency control, and reliability improvements.
+This phase focuses on building the settings infrastructure, UI hub, and advanced features like batch import, engine updates, and app self-updates.
 
 ## Proposed Changes
 
 ### [core-engine]
 
-#### [MODIFY] [DownloadEntity.kt](file:///C:/Users/teirm/AndroidStudioProjects/Dolo2/core-engine/src/main/java/com/dolo/core/db/DownloadEntity.kt)
-- Add `priority` field (Int, default 0) to support queue reordering.
-- Add `downloadSpeed` field (Long, default 0) to track current speed.
+#### [MODIFY] [SettingsRepository.kt](file:///C:/Users/teirm/AndroidStudioProjects/Dolo2/core-engine/src/main/java/com/dolo/core/repository/SettingsRepository.kt)
+- Expand with new settings:
+    - `defaultAudioFormat` (MP3, M4A, OPUS, FLAC)
+    - `defaultAudioBitrate` (128, 192, 256, 320)
+    - `isMetadataEmbeddingEnabled` (Boolean, default true)
+    - `themeMode` (Follow System, Light, Dark)
+    - `namingMode` (Clean Title, Original Filename)
+    - `organizePlaylistsInFolders` (Boolean, default true)
+    - `clipboardWatcherEnabled` (Boolean, default false)
+    - `lastCheckedAppVersion` (String)
 
-#### [MODIFY] [DownloadDao.kt](file:///C:/Users/teirm/AndroidStudioProjects/Dolo2/core-engine/src/main/java/com/dolo/core/db/DownloadDao.kt)
-- Add `getTopQueuedDownload()` to find the next item to download (ordered by priority DESC, createdAt ASC).
-- Add `updatePriority(id: String, newPriority: Int)` for reordering.
-- Add `getDownloadsByStatuses(statuses: List<String>)` for better filtering.
-- Update `observeAllDownloads` to order by `priority` DESC, `createdAt` DESC.
+#### [NEW] [AppUpdateChecker.kt](file:///C:/Users/teirm/AndroidStudioProjects/Dolo2/core-engine/src/main/java/com/dolo/core/util/AppUpdateChecker.kt)
+- Utility to check GitHub Releases API for the latest tag and compare with current `BuildConfig.VERSION_NAME`.
 
-#### [NEW] [SettingsRepository.kt](file:///C:/Users/teirm/AndroidStudioProjects/Dolo2/core-engine/src/main/java/com/dolo/core/repository/SettingsRepository.kt)
-- Create a repository using `androidx.datastore:datastore-preferences` to manage app settings:
-    - `maxConcurrentDownloads` (default 2)
-    - `isWifiOnly` (default false)
-    - `globalSpeedLimitKbps` (default 0, unlimited)
-    - `connectionsPerDownload` (default 4)
+#### [NEW] [EngineUpdateWorker.kt](file:///C:/Users/teirm/AndroidStudioProjects/Dolo2/core-engine/src/main/java/com/dolo/core/worker/EngineUpdateWorker.kt)
+- Periodic WorkManager job to call `youtubeDL.updateYoutubeDL(context)`.
 
-#### [MODIFY] [DownloadRepository.kt](file:///C:/Users/teirm/AndroidStudioProjects/Dolo2/core-engine/src/main/java/com/dolo/core/repository/DownloadRepository.kt)
-- Add `pauseDownload(id: String)`.
-- Add `resumeDownload(id: String)`.
-- Add `moveDownloadUp(id: String)` and `moveDownloadDown(id: String)` by adjusting priorities.
-
-#### [MODIFY] [DownloadService.kt](file:///C:/Users/teirm/AndroidStudioProjects/Dolo2/app/src/main/java/com/dolo/dolo/service/DownloadService.kt)
-- Refactor to manage a pool of active downloads.
-- Use a `CoroutineScope` to manage multiple `youtubeDL.execute` calls.
-- Implement a loop/trigger that checks for QUEUED downloads when an active one finishes or when `maxConcurrentDownloads` increases.
-- Observe `SettingsRepository` for concurrency changes.
-- Implement `PAUSE_DOWNLOAD` and `RESUME_DOWNLOAD` actions.
-- Improve notification to show "X active downloads" and a summary of progress.
+#### [NEW] [AppUpdateWorker.kt](file:///C:/Users/teirm/AndroidStudioProjects/Dolo2/core-engine/src/main/java/com/dolo/core/worker/AppUpdateWorker.kt)
+- Periodic WorkManager job to check for app updates.
 
 ### [app]
 
-#### [MODIFY] [DownloadQueueViewModel.kt](file:///C:/Users/teirm/AndroidStudioProjects/Dolo2/app/src/main/java/com/dolo/dolo/ui/queue/DownloadQueueViewModel.kt)
-- Add `pauseDownload(id: String)`, `resumeDownload(id: String)`.
-- Add `moveDownloadUp(id: String)`, `moveDownloadDown(id: String)`.
-- Update `DownloadQueueUiState` to include `pausedDownloads`.
+#### [NEW] Settings UI Screens
+- **`SettingsHubScreen.kt`**: The main settings menu.
+- **`GeneralSettingsScreen.kt`**: Theme, notifications.
+- **`DownloadSettingsScreen.kt`**: Quality, concurrency, path, speed limit.
+- **`AudioSettingsScreen.kt`**: Format, bitrate, metadata.
+- **`EngineSettingsScreen.kt`**: Version, update, cookies.
+- **`AboutScreen.kt`**: Privacy, version, update check button.
 
-#### [MODIFY] [DownloadQueueScreen.kt](file:///C:/Users/teirm/AndroidStudioProjects/Dolo2/app/src/main/java/com/dolo/dolo/ui/queue/DownloadQueueScreen.kt)
-- Add "Pause" icon button for `DOWNLOADING` items.
-- Add "Resume" icon button for `PAUSED` items.
-- (Optional) Show speed and ETA if available from `youtubedl-android` callback.
+#### [NEW] [BatchImportSheet.kt](file:///C:/Users/teirm/AndroidStudioProjects/Dolo2/app/src/main/java/com/dolo/dolo/ui/home/BatchImportSheet.kt)
+- Multi-line text field for pasting multiple URLs, validating them, and queueing.
+
+#### [MODIFY] [HomeScreen.kt](file:///C:/Users/teirm/AndroidStudioProjects/Dolo2/app/src/main/java/com/dolo/dolo/ui/home/HomeScreen.kt)
+- Add "Batch Import" icon/button.
+- Implement on-resume clipboard check logic (if enabled).
+
+#### [MODIFY] [MainActivity.kt](file:///C:/Users/teirm/AndroidStudioProjects/Dolo2/app/src/main/java/com/dolo/dolo/MainActivity.kt)
+- Add navigation routes for all settings screens.
+- Implement app shortcut handling.
+
+#### [NEW] `res/xml/shortcuts.xml`
+- Define "Paste & Download" static shortcut.
 
 ## Verification Plan
 
 ### Automated Tests
-- Unit tests for `DownloadDao` sorting and queue selection logic.
-- Unit tests for `FileNamer` (Phase 1 already did some, but ensure it handles trimmed clips correctly).
+- Unit tests for `AppUpdateChecker` parsing logic.
+- Unit tests for `SettingsRepository` saving/loading new fields.
 
 ### Manual Verification
-1.  **Queue Management**:
-    - Add 5 downloads.
-    - Verify only 2 start downloading initially.
-    - Pause one; verify a new one starts.
-    - Change max concurrency to 3; verify another one starts.
-2.  **Reliability**:
-    - Terminate app; verify WorkManager `DownloadRetryWorker` or Service restart resumes pending downloads.
-3.  **Wi-Fi Only**:
-    - Enable Wi-Fi only, start download on mobile data -> should stay QUEUED or PAUSED.
-    - Connect to Wi-Fi -> should start.
+1.  **Settings**: Toggle every setting and verify it persists (reopen app).
+2.  **Theme**: Change theme mode and verify UI updates immediately.
+3.  **Batch Import**: Paste 3 URLs, verify all are extracted/queued.
+4.  **Update Check**: Trigger manual update check in About screen.
+5.  **Clipboard**: Enable watcher, copy a link, return to app -> verify prompt appears.

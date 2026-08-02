@@ -1,21 +1,25 @@
-# Task List - Phase 4: Queue & Reliability
+# Task List - Phase 5: Settings & Customization
 
-- [x] Update Database Schema
-    - [x] Add `priority` and `downloadSpeed` to `DownloadEntity`
-    - [x] Update `DownloadDao` with queue management queries
-- [x] Implement Settings
-    - [x] Create `SettingsRepository` using DataStore
-    - [x] Add settings for max concurrency, wifi-only, speed limit, connections
-- [x] Enhance Repositories
-    - [x] Update `DownloadRepository` with pause/resume and reordering logic
-- [x] Refactor Download Service
-    - [x] Implement download pooling and concurrency control
-    - [x] Handle PAUSE/RESUME actions
-    - [x] Add network listener for wifi-only check
-- [x] Update UI
-    - [x] Add Pause/Resume/Reorder to `DownloadQueueViewModel`
-    - [x] Update `DownloadQueueScreen` with new controls
-- [x] Verification
-    - [x] Test queueing with concurrency limits
-    - [x] Test pause/resume
-    - [x] Test reliability after app restart
+- [ ] Expand `SettingsRepository`
+    - [ ] Add audio settings, theme, naming mode, and app update fields
+- [ ] Implement Update Logic
+    - [ ] Create `AppUpdateChecker` utility
+    - [ ] Create `EngineUpdateWorker` for yt-dlp updates
+    - [ ] Create `AppUpdateWorker` for app self-updates
+- [ ] Build Settings UI Hub
+    - [ ] Create `SettingsHubScreen` and navigation routes
+    - [ ] Implement `GeneralSettingsScreen`
+    - [ ] Implement `DownloadSettingsScreen`
+    - [ ] Implement `AudioSettingsScreen`
+    - [ ] Implement `EngineSettingsScreen` (with cookies import)
+    - [ ] Implement `AboutScreen` (with update checks)
+- [ ] Batch Import Feature
+    - [ ] Build `BatchImportSheet`
+    - [ ] Integrate into `HomeScreen`
+- [ ] Smart Features
+    - [ ] Implement Clipboard Watcher on `HomeScreen` resume
+    - [ ] Add "Paste & Download" App Shortcut
+- [ ] Verification
+    - [ ] Verify all settings persist correctly
+    - [ ] Verify batch import flow
+    - [ ] Verify update check triggers
