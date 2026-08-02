@@ -306,46 +306,46 @@ All screens are Composables navigated via **Compose Navigation** inside a single
 ## 5. Roadmap: MVP → Full App
 
 ### 🟢 Phase 0 — Project Setup
-- [ ] Create Android Studio project (Kotlin, min SDK 24+, single-Activity Compose template)
-- [ ] Add `youtubedl-android` dependencies (`library`, `ffmpeg`, `aria2c` modules) to `build.gradle.kts`
-- [ ] Add Hilt dependency + `@HiltAndroidApp` Application class, set up `hilt-navigation-compose` for `hiltViewModel()` support
-- [ ] Add WorkManager dependency + Hilt-WorkManager integration (`HiltWorkerFactory`)
-- [ ] Set up Gradle module structure (`app`, `core-engine`, `core-ui`)
-- [ ] Configure per-ABI splits (arm64-v8a, armeabi-v7a) for AAB
-- [ ] Set up Compose Navigation graph and Material 3 theming baseline
-- [ ] Set up Room DB for download history/library metadata
-- [ ] Build `OnboardingScreen` — welcome, storage permission request, engine setup loading state on first launch (library self-initializes Python/yt-dlp/ffmpeg on first run)
-- [ ] Set up GitHub repo, README, GPL/LGPL license file, CI (lint + build)
-- [ ] Set up release keystore + store as GitHub Actions secret (not committed to repo)
-- [ ] Build GitHub Actions release workflow: on version tag push → lint + test → `assembleRelease` → sign → attach signed APK to GitHub Release
+- [x] Create Android Studio project (Kotlin, min SDK 24+, single-Activity Compose template)
+- [x] Add `youtubedl-android` dependencies (`library`, `ffmpeg`, `aria2c` modules) to `build.gradle.kts`
+- [x] Add Hilt dependency + `@HiltAndroidApp` Application class, set up `hilt-navigation-compose` for `hiltViewModel()` support
+- [x] Add WorkManager dependency + Hilt-WorkManager integration (`HiltWorkerFactory`)
+- [x] Set up Gradle module structure (`app`, `core-engine`)
+- [x] Configure per-ABI splits (arm64-v8a) for AAB/APK
+- [x] Set up Compose Navigation graph and Material 3 theming baseline
+- [x] Set up Room DB for download history/library metadata
+- [x] Build `OnboardingScreen` — welcome, storage permission request, engine setup loading state on first launch (library self-initializes Python/yt-dlp/ffmpeg on first run)
+- [x] Set up GitHub repo, README, GPL/LGPL license file, CI (lint + build)
+- [x] Set up release keystore + store as GitHub Actions secret (not committed to repo)
+- [x] Build GitHub Actions release workflow: on version tag push → lint + test → `assembleRelease` → sign → attach signed APK to GitHub Release
 
 ### 🟢 Phase 1 — Engine Integration (MVP core)
-- [ ] Build `EngineModule` (Hilt `@Module`, `@InstallIn(SingletonComponent::class)`): provides `@Singleton` instances of `YoutubeDL`, `FFmpeg`, `Aria2c` from `youtubedl-android`
-- [ ] Initialize `YoutubeDL`, `FFmpeg`, and `Aria2c` singletons from `youtubedl-android` (via Hilt-provided instances, initialized in `Application.onCreate()`)
-- [ ] Build `YtDlpExtractor` wrapper (constructor-injected via Hilt): call `YoutubeDL.getInfo(url)`, map `VideoInfo` → app's Kotlin data class (title, thumbnail, formats[], duration, uploader)
-- [ ] Build `DownloadService` (Foreground Service, `@AndroidEntryPoint`): wraps the library's aria2c-backed download execution, manages lifecycle, receives dependencies via Hilt field injection
-- [ ] Build `DownloadRepository` and `LibraryRepository` (Hilt `RepositoryModule`): sit between ViewModels and the engine/Room DB, expose clean suspend functions/Flows
-- [ ] Build `DownloadRetryWorker` (Hilt-assisted `CoroutineWorker`): re-enqueues failed/interrupted downloads after app/process death, scheduled via WorkManager
-- [ ] Build `MetadataEmbedder`: invokes mutagen via the bundled Python runtime to write ID3/Vorbis/MP4 tags + thumbnail into converted audio files
-- [ ] Build `WebDownloadInterceptor`: hook `WebView.setDownloadListener` in the in-app browser to catch direct file links / `Content-Disposition: attachment` responses and route them to `DownloadService`, bypassing yt-dlp extraction for sites that expose direct download links
-- [ ] Add `ACTION_SEND` intent filter to catch shared links (YouTube/Instagram/etc. "Share" → Dolo), route through the same `extractInfo()` path as pasted links
-- [ ] Handle Android 13+ `POST_NOTIFICATIONS` runtime permission request (required before the foreground service notification can display)
-- [ ] Build duplicate-download check in `DownloadRepository` (query existing entries by source URL + format before queuing)
-- [ ] Build storage-space check (`StatFs`) against estimated file size before starting a download, surfaced as a warning dialog if insufficient
-- [ ] Build `FileNamer`: supports both naming modes (Clean Title vs. Original Filename) for both single items and playlist items, sanitizes for filesystem safety, handles collision suffixes `(1)`/`(2)` for files and folders, applies zero-padded index prefix for playlist items in Clean Title mode, supports the custom naming template from settings, extracts original filenames from URL path / `Content-Disposition` header for `WebDownloadInterceptor` downloads
-- [ ] Add `--download-sections` support to `YoutubeDLRequest` builder for clip/trim downloads (start/end timestamp params)
-- [ ] Add `--cookies <path>` support to `YoutubeDLRequest` builder, reading from an app-private cookies file path when the "Use my cookies" toggle is enabled
-- [ ] Test end-to-end: paste YouTube link → extract formats → download via aria2c → file saved
-- [ ] Test audio conversion end-to-end: select "audio only" → ffmpeg re-encode → mutagen metadata embed → verify tags/art in a third-party music player
+- [x] Build `EngineModule` (Hilt `@Module`, `@InstallIn(SingletonComponent::class)`): provides `@Singleton` instances of `YoutubeDL`, `FFmpeg`, `Aria2c` from `youtubedl-android`
+- [x] Initialize `YoutubeDL`, `FFmpeg`, and `Aria2c` singletons from `youtubedl-android` (via Hilt-provided instances, initialized in `EngineInitializer`)
+- [x] Build `YtDlpExtractor` wrapper (constructor-injected via Hilt): call `YoutubeDL.getInfo(url)`, map `VideoInfo` → app's Kotlin data class (title, thumbnail, formats[], duration, uploader)
+- [x] Build `DownloadService` (Foreground Service, `@AndroidEntryPoint`): wraps the library's aria2c-backed download execution, manages lifecycle, receives dependencies via Hilt field injection
+- [x] Build `DownloadRepository` and `LibraryRepository` (Hilt `RepositoryModule`): sit between ViewModels and the engine/Room DB, expose clean suspend functions/Flows
+- [x] Build `DownloadRetryWorker` (Hilt-assisted `CoroutineWorker`): re-enqueues failed/interrupted downloads after app/process death, scheduled via WorkManager
+- [x] Build `MetadataEmbedder`: invokes mutagen via the bundled Python runtime to write ID3/Vorbis/MP4 tags + thumbnail into converted audio files
+- [x] Build `WebDownloadInterceptor`: hook `WebView.setDownloadListener` in the in-app browser to catch direct file links / `Content-Disposition: attachment` responses and route them to `DownloadService`, bypassing yt-dlp extraction for sites that expose direct download links
+- [x] Add `ACTION_SEND` intent filter to catch shared links (YouTube/Instagram/etc. "Share" → Dolo), route through the same `extractInfo()` path as pasted links
+- [x] Handle Android 13+ `POST_NOTIFICATIONS` runtime permission request (required before the foreground service notification can display)
+- [x] Build duplicate-download check in `DownloadRepository` (query existing entries by source URL + format before queuing)
+- [x] Build storage-space check (`StatFs`) against estimated file size before starting a download, surfaced as a warning dialog if insufficient
+- [x] Build `FileNamer`: supports both naming modes (Clean Title vs. Original Filename) for both single items and playlist items, sanitizes for filesystem safety, handles collision suffixes `(1)`/`(2)` for files and folders, applies zero-padded index prefix for playlist items in Clean Title mode, supports the custom naming template from settings, extracts original filenames from URL path / `Content-Disposition` header for `WebDownloadInterceptor` downloads
+- [x] Add `--download-sections` support to `YoutubeDLRequest` builder for clip/trim downloads (start/end timestamp params)
+- [x] Add `--cookies <path>` support to `YoutubeDLRequest` builder, reading from an app-private cookies file path when the "Use my cookies" toggle is enabled
+- [x] Test end-to-end: paste YouTube link → extract formats → download via aria2c → file saved
+- [x] Test audio conversion end-to-end: select "audio only" → ffmpeg re-encode → mutagen metadata embed → verify tags/art in a third-party music player
 
-### 🟡 Phase 2 — MVP UI
-- [ ] `HomeScreen` with paste-link input + "Paste from clipboard" button, backed by a Hilt-injected `HomeViewModel` (via `hiltViewModel()`, calling `DownloadRepository`)
-- [ ] Share-sheet intent handling (`ACTION_SEND` from other apps)
-- [ ] `FormatPickerSheet` — list formats returned by extractor, tap to start download, includes audio format/bitrate selector and Smart Quality presets ("Best Quality" / "Data Saver" / "Quick MP3") above the manual list
-- [ ] `DownloadQueueScreen` — list active downloads with live progress (collect from `DownloadRepository.observeQueue()`, exposed via a `DownloadQueueViewModel`)
-- [ ] Persistent notification for foreground service showing overall download progress, with **pause/cancel action buttons** wired to `PendingIntent`s that call back into `DownloadService`
-- [ ] Basic `LibraryScreen` — list completed files via `LibraryRepository.observeLibrary()`, tap to play via system player (stub)
-- [ ] **MVP DONE**: user can paste a link, pick quality (video or converted audio), download, and see it in a list
+### 🟢 Phase 2 — MVP UI
+- [x] `HomeScreen` with paste-link input + "Paste from clipboard" button, backed by a Hilt-injected `HomeViewModel` (via `hiltViewModel()`, calling `DownloadRepository`)
+- [x] Share-sheet intent handling (`ACTION_SEND` from other apps)
+- [x] `FormatPickerSheet` — list formats returned by extractor, tap to start download, includes audio format/bitrate selector and Smart Quality presets ("Best Quality" / "Data Saver" / "Quick MP3") above the manual list
+- [x] `DownloadQueueScreen` — list active downloads with live progress (collect from `DownloadRepository.observeQueue()`, exposed via a `DownloadQueueViewModel`)
+- [x] Persistent notification for foreground service showing overall download progress, with **pause/cancel action buttons** wired to `PendingIntent`s that call back into `DownloadService`
+- [x] Basic `LibraryScreen` — list completed files via `LibraryRepository.observeLibrary()`, tap to play via system player (stub)
+- [x] **MVP DONE**: user can paste a link, pick quality (video or converted audio), download, and see it in a list
 
 ### 🟡 Phase 3 — Playback & Library Polish
 - [ ] Integrate Media3/ExoPlayer for in-app playback (video + audio), hosted inside a Compose `AndroidView`
