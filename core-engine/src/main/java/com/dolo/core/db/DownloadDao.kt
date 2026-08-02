@@ -18,11 +18,17 @@ interface DownloadDao {
     @Query("SELECT * FROM downloads WHERE id = :id")
     suspend fun getDownloadById(id: String): DownloadEntity?
 
-    @Query("SELECT * FROM downloads ORDER BY createdAt DESC")
+    @Query("SELECT * FROM downloads ORDER BY priority DESC, createdAt DESC")
     fun observeAllDownloads(): Flow<List<DownloadEntity>>
 
-    @Query("SELECT * FROM downloads WHERE status = :status ORDER BY createdAt DESC")
+    @Query("SELECT * FROM downloads WHERE status = :status ORDER BY priority DESC, createdAt DESC")
     suspend fun getDownloadsByStatus(status: String): List<DownloadEntity>
+
+    @Query("SELECT * FROM downloads WHERE status IN (:statuses) ORDER BY priority DESC, createdAt DESC")
+    suspend fun getDownloadsByStatuses(statuses: List<String>): List<DownloadEntity>
+
+    @Query("SELECT * FROM downloads WHERE status = 'QUEUED' ORDER BY priority DESC, createdAt ASC LIMIT 1")
+    suspend fun getTopQueuedDownload(): DownloadEntity?
 
     @Query("SELECT * FROM downloads WHERE url = :url AND (:formatId IS NULL OR formatId = :formatId) AND status = 'COMPLETED' LIMIT 1")
     suspend fun findCompletedDuplicate(url: String, formatId: String?): DownloadEntity?
@@ -30,8 +36,11 @@ interface DownloadDao {
     @Query("UPDATE downloads SET status = :status, errorMessage = :errorMessage, updatedAt = :updatedAt WHERE id = :id")
     suspend fun updateStatus(id: String, status: String, errorMessage: String? = null, updatedAt: Long = System.currentTimeMillis())
 
-    @Query("UPDATE downloads SET downloadedSizeBytes = :downloadedBytes, progress = :progress, updatedAt = :updatedAt WHERE id = :id")
-    suspend fun updateProgress(id: String, downloadedBytes: Long, progress: Float, updatedAt: Long = System.currentTimeMillis())
+    @Query("UPDATE downloads SET downloadedSizeBytes = :downloadedBytes, progress = :progress, downloadSpeedBytes = :speed, updatedAt = :updatedAt WHERE id = :id")
+    suspend fun updateProgress(id: String, downloadedBytes: Long, progress: Float, speed: Long = 0, updatedAt: Long = System.currentTimeMillis())
+
+    @Query("UPDATE downloads SET priority = :priority WHERE id = :id")
+    suspend fun updatePriority(id: String, priority: Int)
 
     @Query("DELETE FROM downloads WHERE id = :id")
     suspend fun deleteDownload(id: String)

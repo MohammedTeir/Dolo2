@@ -11,6 +11,7 @@ import com.dolo.core.util.StorageChecker
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.withContext
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -19,7 +20,8 @@ import javax.inject.Singleton
 class DownloadRepository @Inject constructor(
     @param:ApplicationContext private val context: Context,
     private val extractor: YtDlpExtractor,
-    private val downloadDao: DownloadDao
+    private val downloadDao: DownloadDao,
+    private val settingsRepository: SettingsRepository
 ) {
 
     suspend fun extractInfo(url: String): Result<VideoMetadata> {
@@ -61,22 +63,56 @@ class DownloadRepository @Inject constructor(
         return downloadDao.getDownloadById(id)
     }
 
+    suspend fun pauseDownload(id: String) {
+        downloadDao.updateStatus(id, "PAUSED")
+        sendServiceCommand("PAUSE_DOWNLOAD", id)
+    }
+
+    suspend fun resumeDownload(id: String) {
+        downloadDao.updateStatus(id, "QUEUED")
+        sendServiceCommand("RESUME_DOWNLOAD", id)
+    }
+
     suspend fun cancelDownload(id: String) {
         downloadDao.updateStatus(id, "CANCELLED")
-        try {
-            val intent = Intent().apply {
-                setClassName(context.packageName, "com.dolo.dolo.service.DownloadService")
-                action = "CANCEL_DOWNLOAD"
-                putExtra("DOWNLOAD_ID", id)
-            }
-            context.startService(intent)
-        } catch (e: Exception) {
-            e.printStackTrace()
+        sendServiceCommand("CANCEL_DOWNLOAD", id)
+    }
+
+    suspend fun moveDownloadUp(id: String) = withContext(Dispatchers.IO) {
+        val all = downloadDao.observeAllDownloads().first()
+        val index = all.indexOfFirst { it.id == id }
+        if (index > 0) {
+            val current = all[index]
+            val above = all[index - 1]
+            downloadDao.updatePriority(current.id, above.priority + 1)
+        }
+    }
+
+    suspend fun moveDownloadDown(id: String) = withContext(Dispatchers.IO) {
+        val all = downloadDao.observeAllDownloads().first()
+        val index = all.indexOfFirst { it.id == id }
+        if (index >= 0 && index < all.size - 1) {
+            val current = all[index]
+            val below = all[index + 1]
+            downloadDao.updatePriority(current.id, below.priority - 1)
         }
     }
 
     fun hasEnoughStorageSpace(path: String, requiredBytes: Long): Boolean {
         return StorageChecker.hasEnoughSpace(path, requiredBytes)
+    }
+
+    private fun sendServiceCommand(action: String, downloadId: String) {
+        try {
+            val intent = Intent().apply {
+                setClassName(context.packageName, "com.dolo.dolo.service.DownloadService")
+                this.action = action
+                putExtra("DOWNLOAD_ID", downloadId)
+            }
+            context.startService(intent)
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
     }
 
     private fun startDownloadService(downloadId: String, params: DownloadParams) {

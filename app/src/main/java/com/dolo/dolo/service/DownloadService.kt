@@ -5,23 +5,32 @@ import android.app.NotificationManager
 import android.app.Service
 import android.content.Context
 import android.content.Intent
+import android.net.ConnectivityManager
+import android.net.Network
+import android.net.NetworkCapabilities
 import android.os.Build
 import android.os.IBinder
 import androidx.core.app.NotificationCompat
 import com.dolo.core.db.DownloadDao
+import com.dolo.core.db.DownloadEntity
 import com.dolo.core.db.LibraryItemDao
 import com.dolo.core.db.LibraryItemEntity
 import com.dolo.core.engine.DownloadRequestBuilder
 import com.dolo.core.model.DownloadParams
-import com.yausername.youtubedl_android.DownloadProgressCallback
+import com.dolo.core.repository.SettingsRepository
 import com.yausername.youtubedl_android.YoutubeDL
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import java.io.File
+import java.util.concurrent.ConcurrentHashMap
 import javax.inject.Inject
 
 @AndroidEntryPoint
@@ -36,123 +45,219 @@ class DownloadService : Service() {
     @Inject
     lateinit var libraryItemDao: LibraryItemDao
 
+    @Inject
+    lateinit var settingsRepository: SettingsRepository
+
     private val serviceScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
+    private val activeJobs = ConcurrentHashMap<String, Job>()
+    
     private val CHANNEL_ID = "dolo_download_channel"
     private val NOTIFICATION_ID = 1001
+
+    private var maxConcurrent = 2
+    private var isWifiOnly = false
+    private var isWifiConnected = false
 
     override fun onCreate() {
         super.onCreate()
         createNotificationChannel()
         startForeground(NOTIFICATION_ID, buildNotification(title = "Dolo Downloader", text = "Dolo Engine active", progress = 0f))
+        
+        setupConnectivityListener()
+        observeSettings()
+        startQueueProcessor()
+    }
+
+    private fun setupConnectivityListener() {
+        val cm = getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
+        isWifiConnected = cm.getNetworkCapabilities(cm.activeNetwork)?.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) == true
+        
+        cm.registerDefaultNetworkCallback(object : ConnectivityManager.NetworkCallback() {
+            override fun onAvailable(network: Network) {
+                val caps = cm.getNetworkCapabilities(network)
+                isWifiConnected = caps?.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) == true
+                processQueue()
+            }
+
+            override fun onLost(network: Network) {
+                isWifiConnected = false
+                if (isWifiOnly) {
+                    pauseAllDownloads()
+                }
+            }
+        })
+    }
+
+    private fun observeSettings() {
+        serviceScope.launch {
+            combine(
+                settingsRepository.maxConcurrentDownloads,
+                settingsRepository.isWifiOnly
+            ) { max, wifi ->
+                Pair(max, wifi)
+            }.distinctUntilChanged().collect { (max, wifi) ->
+                maxConcurrent = max
+                isWifiOnly = wifi
+                processQueue()
+            }
+        }
+    }
+
+    private fun startQueueProcessor() {
+        serviceScope.launch {
+            downloadDao.observeAllDownloads().collect {
+                processQueue()
+            }
+        }
+    }
+
+    private fun processQueue() {
+        if (isWifiOnly && !isWifiConnected) return
+
+        serviceScope.launch {
+            val downloading = downloadDao.getDownloadsByStatus("DOWNLOADING")
+            val toStartCount = maxConcurrent - downloading.size
+
+            if (toStartCount > 0) {
+                val queued = downloadDao.getDownloadsByStatus("QUEUED")
+                queued.take(toStartCount).forEach { download ->
+                    startDownload(download)
+                }
+            }
+        }
+    }
+
+    private fun pauseAllDownloads() {
+        serviceScope.launch {
+            val downloading = downloadDao.getDownloadsByStatus("DOWNLOADING")
+            downloading.forEach { download ->
+                pauseDownload(download.id)
+            }
+        }
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         when (intent?.action) {
             "START_DOWNLOAD" -> {
-                val downloadId = intent.getStringExtra("DOWNLOAD_ID") ?: return START_NOT_STICKY
-                val url = intent.getStringExtra("URL") ?: return START_NOT_STICKY
-                val formatId = intent.getStringExtra("FORMAT_ID")
-                val outputDir = intent.getStringExtra("OUTPUT_DIR") ?: cacheDir.absolutePath
-                val fileName = intent.getStringExtra("FILE_NAME")
-                val isAudioOnly = intent.getBooleanExtra("IS_AUDIO_ONLY", false)
-                val audioFormat = intent.getStringExtra("AUDIO_FORMAT") ?: "mp3"
-                val audioBitrate = intent.getIntExtra("AUDIO_BITRATE", 192)
-                val useCookies = intent.getBooleanExtra("USE_COOKIES", false)
-                val cookiesPath = intent.getStringExtra("COOKIES_PATH")
-                val trimStart = if (intent.hasExtra("TRIM_START")) intent.getFloatExtra("TRIM_START", 0f) else null
-                val trimEnd = if (intent.hasExtra("TRIM_END")) intent.getFloatExtra("TRIM_END", 0f) else null
-
-                val params = DownloadParams(
-                    id = downloadId,
-                    url = url,
-                    formatId = formatId,
-                    outputDir = outputDir,
-                    fileName = fileName,
-                    isAudioOnly = isAudioOnly,
-                    audioFormat = audioFormat,
-                    audioBitrate = audioBitrate,
-                    trimStartSeconds = trimStart,
-                    trimEndSeconds = trimEnd,
-                    useCookies = useCookies,
-                    cookiesPath = cookiesPath
-                )
-
-                executeDownload(params)
+                processQueue()
             }
             "CANCEL_DOWNLOAD" -> {
                 val downloadId = intent.getStringExtra("DOWNLOAD_ID")
-                if (downloadId != null) {
-                    youtubeDL.destroyProcessById(downloadId)
-                    serviceScope.launch {
-                        downloadDao.updateStatus(downloadId, "CANCELLED")
-                    }
-                    updateNotification("Download cancelled", 0f, downloadId = downloadId)
-                }
+                if (downloadId != null) cancelDownload(downloadId)
             }
             "PAUSE_DOWNLOAD" -> {
                 val downloadId = intent.getStringExtra("DOWNLOAD_ID")
+                if (downloadId != null) pauseDownload(downloadId)
+            }
+            "RESUME_DOWNLOAD" -> {
+                val downloadId = intent.getStringExtra("DOWNLOAD_ID")
                 if (downloadId != null) {
-                    youtubeDL.destroyProcessById(downloadId)
                     serviceScope.launch {
-                        downloadDao.updateStatus(downloadId, "PAUSED")
+                        downloadDao.updateStatus(downloadId, "QUEUED")
+                        processQueue()
                     }
-                    updateNotification("Download paused", 0f, downloadId = downloadId)
                 }
             }
         }
         return START_STICKY
     }
 
-    private fun executeDownload(params: DownloadParams) {
-        serviceScope.launch {
-            val title = params.fileName ?: downloadDao.getDownloadById(params.id)?.title ?: "Media Download"
-            try {
-                downloadDao.updateStatus(params.id, "DOWNLOADING")
-                updateNotification(title = title, text = "Downloading...", progress = 0f, downloadId = params.id)
+    private fun startDownload(download: DownloadEntity) {
+        if (activeJobs.containsKey(download.id)) return
 
-                // Ensure output directory exists on disk
-                val outputDirFile = File(params.outputDir)
-                if (!outputDirFile.exists()) {
-                    outputDirFile.mkdirs()
+        val job = serviceScope.launch {
+            executeDownload(download)
+        }
+        activeJobs[download.id] = job
+    }
+
+    private suspend fun executeDownload(download: DownloadEntity) {
+        val title = download.title ?: "Media Download"
+        try {
+            downloadDao.updateStatus(download.id, "DOWNLOADING")
+            updateNotification(title = title, text = "Starting...", progress = 0f, downloadId = download.id)
+
+            val outputDir = download.filePath?.let { File(it).parent } ?: cacheDir.absolutePath
+            val outputDirFile = File(outputDir)
+            if (!outputDirFile.exists()) outputDirFile.mkdirs()
+
+            val params = DownloadParams(
+                id = download.id,
+                url = download.url,
+                formatId = download.formatId,
+                outputDir = outputDir,
+                fileName = download.filePath?.let { File(it).name },
+                isAudioOnly = download.isAudioOnly,
+                audioFormat = download.audioFormat,
+                audioBitrate = download.audioBitrate,
+                trimStartSeconds = download.trimStartSeconds,
+                trimEndSeconds = download.trimEndSeconds,
+                useCookies = download.useCookies,
+                connectionsPerDownload = settingsRepository.connectionsPerDownload.first()
+            )
+
+            val request = DownloadRequestBuilder.buildRequest(params)
+
+            youtubeDL.execute(request, download.id) { progress, etaInSeconds, line ->
+                serviceScope.launch {
+                    val validProgress = if (progress < 0f) 0f else progress
+                    downloadDao.updateProgress(download.id, 0L, validProgress)
+                    val statusText = if (progress < 0f) "Downloading..." else "Downloading: ${validProgress.toInt()}%"
+                    updateNotification(title = title, text = statusText, progress = validProgress, downloadId = download.id)
                 }
-
-                val request = DownloadRequestBuilder.buildRequest(params)
-
-                youtubeDL.execute(request, params.id) { progress, etaInSeconds, line ->
-                    serviceScope.launch {
-                        val validProgress = if (progress < 0f) 0f else progress
-                        downloadDao.updateProgress(params.id, 0L, validProgress)
-                        val statusText = if (progress < 0f) "Downloading..." else "Downloading: ${validProgress.toInt()}%"
-                        updateNotification(title = title, text = statusText, progress = validProgress, downloadId = params.id)
-                    }
-                }
-
-                // Download complete
-                downloadDao.updateStatus(params.id, "COMPLETED")
-                val completedFile = File(params.outputDir, params.fileName ?: "download.mp4")
-
-                // Add to library
-                val libraryItem = LibraryItemEntity(
-                    id = params.id,
-                    sourceUrl = params.url,
-                    title = title,
-                    filePath = completedFile.absolutePath,
-                    fileSizeBytes = if (completedFile.exists()) completedFile.length() else 0L,
-                    isAudio = params.isAudioOnly
-                )
-                libraryItemDao.insertLibraryItem(libraryItem)
-
-                updateNotification(title = title, text = "Download complete", progress = 100f, downloadId = params.id)
-            } catch (e: Exception) {
-                e.printStackTrace()
-                val errorMsg = e.localizedMessage ?: e.message ?: "Unknown download error"
-                downloadDao.updateStatus(params.id, "FAILED", errorMessage = errorMsg)
-                updateNotification(title = title, text = "Download failed: $errorMsg", progress = 0f, downloadId = params.id)
             }
+
+            // Download complete
+            downloadDao.updateStatus(download.id, "COMPLETED")
+            val completedFile = File(outputDir, params.fileName ?: "download.mp4")
+
+            val libraryItem = LibraryItemEntity(
+                id = download.id,
+                sourceUrl = download.url,
+                title = title,
+                filePath = completedFile.absolutePath,
+                fileSizeBytes = if (completedFile.exists()) completedFile.length() else 0L,
+                isAudio = download.isAudioOnly
+            )
+            libraryItemDao.insertLibraryItem(libraryItem)
+            updateNotification(title = title, text = "Download complete", progress = 100f, downloadId = download.id)
+            
+        } catch (e: Exception) {
+            if (downloadDao.getDownloadById(download.id)?.status != "PAUSED" && 
+                downloadDao.getDownloadById(download.id)?.status != "CANCELLED") {
+                val errorMsg = e.localizedMessage ?: "Unknown error"
+                downloadDao.updateStatus(download.id, "FAILED", errorMessage = errorMsg)
+                updateNotification(title = title, text = "Failed: $errorMsg", progress = 0f, downloadId = download.id)
+            }
+        } finally {
+            activeJobs.remove(download.id)
+            processQueue()
         }
     }
 
-    private fun buildNotification(title: String, text: String, progress: Float, downloadedBytes: Long = 0, totalBytes: Long = 0, downloadId: String? = null): android.app.Notification {
+    private fun pauseDownload(downloadId: String) {
+        serviceScope.launch {
+            youtubeDL.destroyProcessById(downloadId)
+            activeJobs[downloadId]?.cancel()
+            activeJobs.remove(downloadId)
+            downloadDao.updateStatus(downloadId, "PAUSED")
+            updateNotification("Download paused", 0f, downloadId = downloadId)
+            processQueue()
+        }
+    }
+
+    private fun cancelDownload(downloadId: String) {
+        serviceScope.launch {
+            youtubeDL.destroyProcessById(downloadId)
+            activeJobs[downloadId]?.cancel()
+            activeJobs.remove(downloadId)
+            downloadDao.updateStatus(downloadId, "CANCELLED")
+            updateNotification("Download cancelled", 0f, downloadId = downloadId)
+            processQueue()
+        }
+    }
+
+    private fun buildNotification(title: String, text: String, progress: Float, downloadId: String? = null): android.app.Notification {
         val isIndeterminate = progress <= 0f && text.startsWith("Downloading")
         val builder = NotificationCompat.Builder(this, CHANNEL_ID)
             .setContentTitle(title)
@@ -161,31 +266,21 @@ class DownloadService : Service() {
             .setProgress(100, progress.toInt().coerceAtLeast(0), isIndeterminate)
             .setOngoing(progress < 100f && !text.contains("cancelled") && !text.contains("failed") && !text.contains("paused"))
 
-        if (downloadId != null && text.startsWith("Downloading")) {
+        if (downloadId != null && (text.startsWith("Downloading") || text.startsWith("Starting"))) {
             val pauseIntent = Intent(this, DownloadService::class.java).apply {
                 action = "PAUSE_DOWNLOAD"
                 putExtra("DOWNLOAD_ID", downloadId)
             }
-            val pausePendingIntent = android.app.PendingIntent.getService(
-                this,
-                downloadId.hashCode(),
-                pauseIntent,
-                android.app.PendingIntent.FLAG_UPDATE_CURRENT or android.app.PendingIntent.FLAG_IMMUTABLE
-            )
+            val pausePI = android.app.PendingIntent.getService(this, downloadId.hashCode(), pauseIntent, android.app.PendingIntent.FLAG_UPDATE_CURRENT or android.app.PendingIntent.FLAG_IMMUTABLE)
 
             val cancelIntent = Intent(this, DownloadService::class.java).apply {
                 action = "CANCEL_DOWNLOAD"
                 putExtra("DOWNLOAD_ID", downloadId)
             }
-            val cancelPendingIntent = android.app.PendingIntent.getService(
-                this,
-                downloadId.hashCode() + 1,
-                cancelIntent,
-                android.app.PendingIntent.FLAG_UPDATE_CURRENT or android.app.PendingIntent.FLAG_IMMUTABLE
-            )
+            val cancelPI = android.app.PendingIntent.getService(this, downloadId.hashCode() + 1, cancelIntent, android.app.PendingIntent.FLAG_UPDATE_CURRENT or android.app.PendingIntent.FLAG_IMMUTABLE)
 
-            builder.addAction(android.R.drawable.ic_media_pause, "Pause", pausePendingIntent)
-            builder.addAction(android.R.drawable.ic_menu_close_clear_cancel, "Cancel", cancelPendingIntent)
+            builder.addAction(android.R.drawable.ic_media_pause, "Pause", pausePI)
+            builder.addAction(android.R.drawable.ic_menu_close_clear_cancel, "Cancel", cancelPI)
         }
 
         return builder.build()
@@ -198,11 +293,7 @@ class DownloadService : Service() {
 
     private fun createNotificationChannel() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            val channel = NotificationChannel(
-                CHANNEL_ID,
-                "Download Service Channel",
-                NotificationManager.IMPORTANCE_LOW
-            )
+            val channel = NotificationChannel(CHANNEL_ID, "Downloads", NotificationManager.IMPORTANCE_LOW)
             val manager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
             manager.createNotificationChannel(channel)
         }

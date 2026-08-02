@@ -14,6 +14,7 @@ import javax.inject.Inject
 
 data class DownloadQueueUiState(
     val activeDownloads: List<DownloadEntity> = emptyList(),
+    val pausedDownloads: List<DownloadEntity> = emptyList(),
     val queuedDownloads: List<DownloadEntity> = emptyList(),
     val failedDownloads: List<DownloadEntity> = emptyList()
 )
@@ -26,7 +27,8 @@ class DownloadQueueViewModel @Inject constructor(
     val uiState: StateFlow<DownloadQueueUiState> = downloadRepository.observeQueue()
         .map { downloads ->
             DownloadQueueUiState(
-                activeDownloads = downloads.filter { it.status == "DOWNLOADING" || it.status == "PAUSED" },
+                activeDownloads = downloads.filter { it.status == "DOWNLOADING" },
+                pausedDownloads = downloads.filter { it.status == "PAUSED" },
                 queuedDownloads = downloads.filter { it.status == "QUEUED" },
                 failedDownloads = downloads.filter { it.status == "FAILED" }
             )
@@ -40,6 +42,30 @@ class DownloadQueueViewModel @Inject constructor(
     fun cancelDownload(id: String) {
         viewModelScope.launch {
             downloadRepository.cancelDownload(id)
+        }
+    }
+
+    fun pauseDownload(id: String) {
+        viewModelScope.launch {
+            downloadRepository.pauseDownload(id)
+        }
+    }
+
+    fun resumeDownload(id: String) {
+        viewModelScope.launch {
+            downloadRepository.resumeDownload(id)
+        }
+    }
+
+    fun moveDownloadUp(id: String) {
+        viewModelScope.launch {
+            downloadRepository.moveDownloadUp(id)
+        }
+    }
+
+    fun moveDownloadDown(id: String) {
+        viewModelScope.launch {
+            downloadRepository.moveDownloadDown(id)
         }
     }
 }

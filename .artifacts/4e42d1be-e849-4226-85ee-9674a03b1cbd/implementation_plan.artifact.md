@@ -11,60 +11,57 @@ Start Phase 4 of the Dolo specification, focusing on download queue management, 
 - Add `downloadSpeed` field (Long, default 0) to track current speed.
 
 #### [MODIFY] [DownloadDao.kt](file:///C:/Users/teirm/AndroidStudioProjects/Dolo2/core-engine/src/main/java/com/dolo/core/db/DownloadDao.kt)
-- Add `getTopQueuedDownload()` to find the next item to download.
+- Add `getTopQueuedDownload()` to find the next item to download (ordered by priority DESC, createdAt ASC).
 - Add `updatePriority(id: String, newPriority: Int)` for reordering.
-- Add `getDownloadsByStatus(status: List<String>)` for better filtering.
-- Update `observeAllDownloads` to order by `priority` then `createdAt`.
+- Add `getDownloadsByStatuses(statuses: List<String>)` for better filtering.
+- Update `observeAllDownloads` to order by `priority` DESC, `createdAt` DESC.
 
 #### [NEW] [SettingsRepository.kt](file:///C:/Users/teirm/AndroidStudioProjects/Dolo2/core-engine/src/main/java/com/dolo/core/repository/SettingsRepository.kt)
-- Create a repository using `DataStore` to manage app settings:
+- Create a repository using `androidx.datastore:datastore-preferences` to manage app settings:
     - `maxConcurrentDownloads` (default 2)
     - `isWifiOnly` (default false)
     - `globalSpeedLimitKbps` (default 0, unlimited)
     - `connectionsPerDownload` (default 4)
 
 #### [MODIFY] [DownloadRepository.kt](file:///C:/Users/teirm/AndroidStudioProjects/Dolo2/core-engine/src/main/java/com/dolo/core/repository/DownloadRepository.kt)
-- Add `pauseDownload(id: String)` and `resumeDownload(id: String)`.
-- Add `reorderQueue(id: String, fromIndex: Int, toIndex: Int)`.
+- Add `pauseDownload(id: String)`.
+- Add `resumeDownload(id: String)`.
+- Add `moveDownloadUp(id: String)` and `moveDownloadDown(id: String)` by adjusting priorities.
 
 #### [MODIFY] [DownloadService.kt](file:///C:/Users/teirm/AndroidStudioProjects/Dolo2/app/src/main/java/com/dolo/dolo/service/DownloadService.kt)
 - Refactor to manage a pool of active downloads.
-- Observe settings for concurrency changes.
+- Use a `CoroutineScope` to manage multiple `youtubeDL.execute` calls.
+- Implement a loop/trigger that checks for QUEUED downloads when an active one finishes or when `maxConcurrentDownloads` increases.
+- Observe `SettingsRepository` for concurrency changes.
 - Implement `PAUSE_DOWNLOAD` and `RESUME_DOWNLOAD` actions.
-- Improve notification to show overall status and individual progress if possible (or just top active).
-- Listen for network changes to pause/resume based on "Wi-Fi only" setting.
+- Improve notification to show "X active downloads" and a summary of progress.
 
 ### [app]
 
 #### [MODIFY] [DownloadQueueViewModel.kt](file:///C:/Users/teirm/AndroidStudioProjects/Dolo2/app/src/main/java/com/dolo/dolo/ui/queue/DownloadQueueViewModel.kt)
-- Add `pauseDownload(id: String)` and `resumeDownload(id: String)` methods.
-- Add `moveDownloadUp(id: String)` and `moveDownloadDown(id: String)`.
-- Update UI state to include paused downloads in a distinct way or merged with active.
+- Add `pauseDownload(id: String)`, `resumeDownload(id: String)`.
+- Add `moveDownloadUp(id: String)`, `moveDownloadDown(id: String)`.
+- Update `DownloadQueueUiState` to include `pausedDownloads`.
 
 #### [MODIFY] [DownloadQueueScreen.kt](file:///C:/Users/teirm/AndroidStudioProjects/Dolo2/app/src/main/java/com/dolo/dolo/ui/queue/DownloadQueueScreen.kt)
-- Add "Pause" and "Resume" buttons to `DownloadQueueItem`.
-- Show current download speed if available.
-- (Optional) Add drag-and-drop or Up/Down buttons for reordering.
+- Add "Pause" icon button for `DOWNLOADING` items.
+- Add "Resume" icon button for `PAUSED` items.
+- (Optional) Show speed and ETA if available from `youtubedl-android` callback.
 
 ## Verification Plan
 
 ### Automated Tests
-- Unit tests for `SettingsRepository` to ensure values are saved/retrieved correctly.
-- Unit tests for `DownloadDao` to verify priority sorting and queue selection.
+- Unit tests for `DownloadDao` sorting and queue selection logic.
+- Unit tests for `FileNamer` (Phase 1 already did some, but ensure it handles trimmed clips correctly).
 
 ### Manual Verification
 1.  **Queue Management**:
     - Add 5 downloads.
-    - Verify only 2 (or configured max) start downloading, others stay QUEUED.
-    - Pause an active download; verify the next QUEUED download starts.
-    - Resume the paused download; verify it resumes (from where it left off if possible).
-2.  **Concurrency**:
-    - Change "Max concurrent downloads" in settings (via a temporary UI or ADB).
-    - Verify active downloads count adjusts accordingly.
-3.  **Reliability**:
-    - Force close app during download.
-    - Reopen app; verify `DownloadRetryWorker` or `DownloadService` resumes downloads.
-4.  **Wi-Fi Only**:
-    - Enable "Wi-Fi only".
-    - Switch to mobile data; verify downloads pause.
-    - Switch back to Wi-Fi; verify downloads resume.
+    - Verify only 2 start downloading initially.
+    - Pause one; verify a new one starts.
+    - Change max concurrency to 3; verify another one starts.
+2.  **Reliability**:
+    - Terminate app; verify WorkManager `DownloadRetryWorker` or Service restart resumes pending downloads.
+3.  **Wi-Fi Only**:
+    - Enable Wi-Fi only, start download on mobile data -> should stay QUEUED or PAUSED.
+    - Connect to Wi-Fi -> should start.

@@ -29,5 +29,7 @@ data class DownloadEntity(
     val trimEndSeconds: Float? = null,
     val useCookies: Boolean = false,
     val playlistId: String? = null,
-    val playlistIndex: Int? = null
+    val playlistIndex: Int? = null,
+    val priority: Int = 0,
+    val downloadSpeedBytes: Long = 0L
 )

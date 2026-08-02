@@ -17,11 +17,14 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ArrowDownward
+import androidx.compose.material.icons.filled.ArrowUpward
 import androidx.compose.material.icons.filled.Cancel
 import androidx.compose.material.icons.filled.CloudDownload
 import androidx.compose.material.icons.filled.Error
 import androidx.compose.material.icons.filled.HourglassTop
 import androidx.compose.material.icons.filled.Pause
+import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
@@ -68,7 +71,24 @@ fun DownloadQueueScreen(
                 items(uiState.activeDownloads, key = { it.id }) { download ->
                     DownloadQueueItem(
                         download = download,
-                        onCancel = { viewModel.cancelDownload(download.id) }
+                        onCancel = { viewModel.cancelDownload(download.id) },
+                        onPause = { viewModel.pauseDownload(download.id) },
+                        onResume = { viewModel.resumeDownload(download.id) }
+                    )
+                }
+            }
+
+            // Paused downloads
+            if (uiState.pausedDownloads.isNotEmpty()) {
+                item {
+                    SectionHeader(title = "Paused", count = uiState.pausedDownloads.size)
+                }
+                items(uiState.pausedDownloads, key = { it.id }) { download ->
+                    DownloadQueueItem(
+                        download = download,
+                        onCancel = { viewModel.cancelDownload(download.id) },
+                        onPause = { viewModel.pauseDownload(download.id) },
+                        onResume = { viewModel.resumeDownload(download.id) }
                     )
                 }
             }
@@ -81,7 +101,11 @@ fun DownloadQueueScreen(
                 items(uiState.queuedDownloads, key = { it.id }) { download ->
                     DownloadQueueItem(
                         download = download,
-                        onCancel = { viewModel.cancelDownload(download.id) }
+                        onCancel = { viewModel.cancelDownload(download.id) },
+                        onPause = { viewModel.pauseDownload(download.id) },
+                        onResume = { viewModel.resumeDownload(download.id) },
+                        onMoveUp = { viewModel.moveDownloadUp(download.id) },
+                        onMoveDown = { viewModel.moveDownloadDown(download.id) }
                     )
                 }
             }
@@ -131,7 +155,11 @@ private fun SectionHeader(title: String, count: Int) {
 @Composable
 private fun DownloadQueueItem(
     download: DownloadEntity,
-    onCancel: () -> Unit
+    onCancel: () -> Unit,
+    onPause: () -> Unit = {},
+    onResume: () -> Unit = {},
+    onMoveUp: () -> Unit = {},
+    onMoveDown: () -> Unit = {}
 ) {
     val animatedProgress by animateFloatAsState(
         targetValue = download.progress / 100f,
@@ -217,14 +245,51 @@ private fun DownloadQueueItem(
                     }
                 }
 
-                // Cancel button for active/queued
-                if (download.status in listOf("DOWNLOADING", "QUEUED", "PAUSED")) {
-                    IconButton(onClick = onCancel) {
-                        Icon(
-                            imageVector = Icons.Default.Cancel,
-                            contentDescription = "Cancel download",
-                            tint = MaterialTheme.colorScheme.error.copy(alpha = 0.7f)
-                        )
+                // Actions
+                Row {
+                    if (download.status == "DOWNLOADING") {
+                        IconButton(onClick = onPause) {
+                            Icon(
+                                imageVector = Icons.Default.Pause,
+                                contentDescription = "Pause",
+                                tint = MaterialTheme.colorScheme.primary
+                            )
+                        }
+                    } else if (download.status == "PAUSED" || download.status == "QUEUED") {
+                        IconButton(onClick = onResume) {
+                            Icon(
+                                imageVector = Icons.Default.PlayArrow,
+                                contentDescription = "Resume",
+                                tint = MaterialTheme.colorScheme.primary
+                            )
+                        }
+                    }
+
+                    if (download.status == "QUEUED") {
+                        IconButton(onClick = onMoveUp) {
+                            Icon(
+                                imageVector = Icons.Default.ArrowUpward,
+                                contentDescription = "Move Up",
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                        IconButton(onClick = onMoveDown) {
+                            Icon(
+                                imageVector = Icons.Default.ArrowDownward,
+                                contentDescription = "Move Down",
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+
+                    if (download.status in listOf("DOWNLOADING", "QUEUED", "PAUSED")) {
+                        IconButton(onClick = onCancel) {
+                            Icon(
+                                imageVector = Icons.Default.Cancel,
+                                contentDescription = "Cancel",
+                                tint = MaterialTheme.colorScheme.error.copy(alpha = 0.7f)
+                            )
+                        }
                     }
                 }
             }

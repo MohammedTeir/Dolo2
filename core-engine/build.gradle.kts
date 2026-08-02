@@ -57,6 +57,9 @@ dependencies {
     api(libs.youtubedl.android.ffmpeg)
     api(libs.youtubedl.android.aria2c)
 
+    // DataStore
+    implementation(libs.androidx.datastore.preferences)
+
     // Test
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
