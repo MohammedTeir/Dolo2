@@ -29,7 +29,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
@@ -79,7 +78,7 @@ fun LibraryScreen(
                                 onPlayItem(item)
                             }
                         },
-                        onItemLongClick = { viewModel.toggleSelection(item.id) },
+                        onItemLongClick = { viewModel.toggleSelection(it.id) },
                         onRename = { showRenameDialog = it },
                         onDelete = { viewModel.deleteItem(it.id) },
                         onShare = { shareItem(context, it) }
@@ -96,9 +95,9 @@ fun LibraryScreen(
                                 onPlayItem(item)
                             }
                         },
-                        onItemLongClick = { viewModel.toggleSelection(item.id) },
+                        onItemLongClick = { viewModel.toggleSelection(it.id) },
                         onRename = { showRenameDialog = it },
-                        onDelete = { viewModel.deleteItem(item.id) },
+                        onDelete = { viewModel.deleteItem(it.id) },
                         onShare = { shareItem(context, it) }
                     )
                 }
@@ -335,8 +334,9 @@ fun LibraryListItem(
                     overflow = TextOverflow.Ellipsis
                 )
                 val metadataText = buildString {
-                    if (!item.uploader.isNullOrBlank()) {
-                        append(item.uploader)
+                    val uploader = item.uploader
+                    if (!uploader.isNullOrBlank()) {
+                        append(uploader)
                         append(" • ")
                     }
                     append(formatFileSize(item.fileSizeBytes))
@@ -530,9 +530,10 @@ fun LibraryGridItem(
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis
                 )
-                if (!item.uploader.isNullOrBlank()) {
+                val uploader = item.uploader
+                if (!uploader.isNullOrBlank()) {
                     Text(
-                        text = item.uploader,
+                        text = uploader,
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.primary,
                         maxLines = 1,
