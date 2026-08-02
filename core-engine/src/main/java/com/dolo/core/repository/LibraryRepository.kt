@@ -31,6 +31,7 @@ class LibraryRepository @Inject constructor(
                     }
                 } catch (e: Exception) {
                     e.printStackTrace()
+                }
             }
             libraryItemDao.deleteItem(id)
         }
