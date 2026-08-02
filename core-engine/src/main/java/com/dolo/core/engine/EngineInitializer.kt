@@ -17,7 +17,7 @@ import android.util.Log
 
 @Singleton
 class EngineInitializer @Inject constructor(
-    @ApplicationContext private val context: Context,
+    @param:ApplicationContext private val context: Context,
     private val youtubeDL: YoutubeDL,
     private val ffmpeg: FFmpeg,
     private val aria2c: Aria2c
