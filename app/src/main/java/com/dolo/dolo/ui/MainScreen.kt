@@ -50,6 +50,7 @@ enum class NavigationTab(
 fun MainScreen(
     sharedUrl: String? = null,
     onNavigateToSettings: () -> Unit = {},
+    onNavigateToVault: () -> Unit = {},
     homeViewModel: HomeViewModel = hiltViewModel(),
     queueViewModel: DownloadQueueViewModel = hiltViewModel()
 ) {
@@ -111,7 +112,8 @@ fun MainScreen(
                 }
                 NavigationTab.LIBRARY -> {
                     LibraryScreen(
-                        onPlayItem = { playingItem = it }
+                        onPlayItem = { playingItem = it },
+                        onNavigateToVault = onNavigateToVault
                     )
                 }
                 NavigationTab.SETTINGS -> {

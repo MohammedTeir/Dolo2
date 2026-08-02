@@ -122,4 +122,20 @@ class LibraryViewModel @Inject constructor(
             libraryRepository.renameItem(id, newTitle)
         }
     }
+
+    fun moveToVault(id: String) {
+        viewModelScope.launch {
+            libraryRepository.moveToVault(id)
+            _selectedItemIds.value = _selectedItemIds.value - id
+        }
+    }
+
+    fun moveSelectedToVault() {
+        viewModelScope.launch {
+            _selectedItemIds.value.forEach { id ->
+                libraryRepository.moveToVault(id)
+            }
+            _selectedItemIds.value = emptySet()
+        }
+    }
 }

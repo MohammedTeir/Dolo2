@@ -92,6 +92,10 @@ dependencies {
     implementation(libs.androidx.hilt.work)
     ksp(libs.androidx.hilt.compiler)
 
+    // Security & Biometrics
+    implementation(libs.androidx.security.crypto)
+    implementation(libs.androidx.biometric.ktx)
+
     // Testing
     testImplementation(libs.junit)
     androidTestImplementation(platform(libs.androidx.compose.bom))

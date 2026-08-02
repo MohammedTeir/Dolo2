@@ -19,6 +19,7 @@ import androidx.compose.ui.Modifier
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import androidx.hilt.navigation.compose.hiltViewModel
 import com.dolo.dolo.ui.onboarding.OnboardingScreen
 import com.dolo.dolo.ui.settings.AboutScreen
 import com.dolo.dolo.ui.settings.AudioSettingsScreen
@@ -27,6 +28,10 @@ import com.dolo.dolo.ui.settings.EngineSettingsScreen
 import com.dolo.dolo.ui.settings.GeneralSettingsScreen
 import com.dolo.dolo.ui.settings.SettingsHubScreen
 import com.dolo.dolo.ui.theme.DoloTheme
+import com.dolo.dolo.ui.vault.VaultAuthScreen
+import com.dolo.dolo.ui.vault.VaultScreen
+import com.dolo.dolo.ui.vault.VaultSetupScreen
+import com.dolo.dolo.ui.vault.VaultViewModel
 import dagger.hilt.android.AndroidEntryPoint
 
 @AndroidEntryPoint
@@ -61,9 +66,48 @@ class MainActivity : ComponentActivity() {
                         }
 
                         composable("main") {
+                            val vaultViewModel: VaultViewModel = hiltViewModel()
                             com.dolo.dolo.ui.MainScreen(
                                 sharedUrl = sharedUrl,
-                                onNavigateToSettings = { navController.navigate("settings_hub") }
+                                onNavigateToSettings = { navController.navigate("settings_hub") },
+                                onNavigateToVault = {
+                                    if (!vaultViewModel.isInitialized()) {
+                                        navController.navigate("vault_setup")
+                                    } else if (!vaultViewModel.isAuthenticated.value) {
+                                        navController.navigate("vault_auth")
+                                    } else {
+                                        navController.navigate("vault_screen")
+                                    }
+                                }
+                            )
+                        }
+
+                        composable("vault_setup") {
+                            VaultSetupScreen(
+                                onBack = { navController.popBackStack() },
+                                onSetupComplete = {
+                                    navController.navigate("vault_screen") {
+                                        popUpTo("vault_setup") { inclusive = true }
+                                    }
+                                }
+                            )
+                        }
+
+                        composable("vault_auth") {
+                            VaultAuthScreen(
+                                onBack = { navController.popBackStack() },
+                                onAuthSuccess = {
+                                    navController.navigate("vault_screen") {
+                                        popUpTo("vault_auth") { inclusive = true }
+                                    }
+                                }
+                            )
+                        }
+
+                        composable("vault_screen") {
+                            VaultScreen(
+                                onBack = { navController.popBackStack() },
+                                onPlayItem = { /* Handle play */ }
                             )
                         }
 

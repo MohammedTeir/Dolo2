@@ -63,6 +63,9 @@ dependencies {
     // OkHttp
     implementation(libs.okhttp)
 
+    // Security
+    implementation(libs.androidx.security.crypto)
+
     // Test
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)

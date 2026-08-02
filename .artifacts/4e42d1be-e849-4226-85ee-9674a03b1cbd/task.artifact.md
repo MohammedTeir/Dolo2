@@ -1,25 +1,25 @@
-# Task List - Phase 5: Settings & Customization
+# Task List - Phase 6: Vault & Privacy
 
-- [ ] Expand `SettingsRepository`
-    - [ ] Add audio settings, theme, naming mode, and app update fields
-- [ ] Implement Update Logic
-    - [ ] Create `AppUpdateChecker` utility
-    - [ ] Create `EngineUpdateWorker` for yt-dlp updates
-    - [ ] Create `AppUpdateWorker` for app self-updates
-- [ ] Build Settings UI Hub
-    - [ ] Create `SettingsHubScreen` and navigation routes
-    - [ ] Implement `GeneralSettingsScreen`
-    - [ ] Implement `DownloadSettingsScreen`
-    - [ ] Implement `AudioSettingsScreen`
-    - [ ] Implement `EngineSettingsScreen` (with cookies import)
-    - [ ] Implement `AboutScreen` (with update checks)
-- [ ] Batch Import Feature
-    - [ ] Build `BatchImportSheet`
-    - [ ] Integrate into `HomeScreen`
-- [ ] Smart Features
-    - [ ] Implement Clipboard Watcher on `HomeScreen` resume
-    - [ ] Add "Paste & Download" App Shortcut
+- [ ] Add Dependencies
+    - [x] Update `libs.versions.toml` with `security-crypto` and `biometric`
+    - [ ] Update `app/build.gradle.kts`
+- [ ] Update Database Schema
+    - [ ] Add `isInVault` to `LibraryItemEntity`
+    - [ ] Update `LibraryItemDao` with vault queries
+    - [ ] Bump `DoloDatabase` version to 3
+- [ ] Implement Vault Logic
+    - [ ] Create `VaultRepository` for encrypted storage and biometrics
+    - [ ] Update `LibraryRepository` with `moveToVault` and `removeFromVault`
+- [ ] Build Vault UI
+    - [ ] Create `VaultSetupScreen` (Password/PIN setup)
+    - [ ] Create `VaultAuthScreen` (Biometric/PIN entry)
+    - [ ] Create `VaultScreen` (Private library view)
+- [ ] Integration
+    - [ ] Add "Move to Vault" action in `LibraryScreen`
+    - [ ] Update `MainActivity` with Vault navigation routes
+    - [ ] Add Vault entry point in `MainScreen` or `SettingsScreen`
 - [ ] Verification
-    - [ ] Verify all settings persist correctly
-    - [ ] Verify batch import flow
-    - [ ] Verify update check triggers
+    - [ ] Verify PIN setup and persistence
+    - [ ] Verify files are moved correctly to app-private storage
+    - [ ] Verify biometric unlock works
+    - [ ] Verify vaulted files are hidden from the main library

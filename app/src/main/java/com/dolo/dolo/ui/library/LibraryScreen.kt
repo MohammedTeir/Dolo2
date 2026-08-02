@@ -46,6 +46,7 @@ import java.util.*
 @Composable
 fun LibraryScreen(
     onPlayItem: (LibraryItemEntity) -> Unit,
+    onNavigateToVault: () -> Unit,
     viewModel: LibraryViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
@@ -60,7 +61,8 @@ fun LibraryScreen(
                 isGridView = uiState.isGridView,
                 onToggleView = { viewModel.toggleViewMode() },
                 sortOption = uiState.sortOption,
-                onSortChange = { viewModel.setSortOption(it) }
+                onSortChange = { viewModel.setSortOption(it) },
+                onVaultClick = onNavigateToVault
             )
 
             if (uiState.items.isEmpty()) {
@@ -81,7 +83,8 @@ fun LibraryScreen(
                         onItemLongClick = { viewModel.toggleSelection(it.id) },
                         onRename = { showRenameDialog = it },
                         onDelete = { viewModel.deleteItem(it.id) },
-                        onShare = { shareItem(context, it) }
+                        onShare = { shareItem(context, it) },
+                        onMoveToVault = { viewModel.moveToVault(it.id) }
                     )
                 } else {
                     LibraryList(
@@ -98,7 +101,8 @@ fun LibraryScreen(
                         onItemLongClick = { viewModel.toggleSelection(it.id) },
                         onRename = { showRenameDialog = it },
                         onDelete = { viewModel.deleteItem(it.id) },
-                        onShare = { shareItem(context, it) }
+                        onShare = { shareItem(context, it) },
+                        onMoveToVault = { viewModel.moveToVault(it.id) }
                     )
                 }
             }
@@ -116,6 +120,7 @@ fun LibraryScreen(
                 onClear = { viewModel.clearSelection() },
                 onSelectAll = { viewModel.selectAll(uiState.items) },
                 onDelete = { viewModel.deleteSelectedItems() },
+                onMoveToVault = { viewModel.moveSelectedToVault() },
                 onShare = {
                     val selectedItems = uiState.items.filter { uiState.selectedItemIds.contains(it.id) }
                     shareSelectedItems(context, selectedItems)
@@ -145,7 +150,8 @@ fun LibraryTopBar(
     isGridView: Boolean,
     onToggleView: () -> Unit,
     sortOption: LibrarySortOption,
-    onSortChange: (LibrarySortOption) -> Unit
+    onSortChange: (LibrarySortOption) -> Unit,
+    onVaultClick: () -> Unit
 ) {
     var showSortMenu by remember { mutableStateOf(false) }
 
@@ -190,6 +196,10 @@ fun LibraryTopBar(
                 )
             }
 
+            IconButton(onClick = onVaultClick) {
+                Icon(Icons.Default.Lock, contentDescription = "Open Vault")
+            }
+
             Box {
                 IconButton(onClick = { showSortMenu = true }) {
                     Icon(Icons.AutoMirrored.Filled.Sort, contentDescription = "Sort options")
@@ -227,7 +237,8 @@ fun LibraryList(
     onItemLongClick: (LibraryItemEntity) -> Unit,
     onRename: (LibraryItemEntity) -> Unit,
     onDelete: (LibraryItemEntity) -> Unit,
-    onShare: (LibraryItemEntity) -> Unit
+    onShare: (LibraryItemEntity) -> Unit,
+    onMoveToVault: (LibraryItemEntity) -> Unit
 ) {
     LazyColumn(
         modifier = Modifier
@@ -245,7 +256,8 @@ fun LibraryList(
                 onLongClick = { onItemLongClick(item) },
                 onRename = { onRename(item) },
                 onDelete = { onDelete(item) },
-                onShare = { onShare(item) }
+                onShare = { onShare(item) },
+                onMoveToVault = { onMoveToVault(item) }
             )
         }
     }
@@ -261,7 +273,8 @@ fun LibraryListItem(
     onLongClick: () -> Unit,
     onRename: () -> Unit,
     onDelete: () -> Unit,
-    onShare: () -> Unit
+    onShare: () -> Unit,
+    onMoveToVault: () -> Unit
 ) {
     var showMenu by remember { mutableStateOf(false) }
 
@@ -369,6 +382,11 @@ fun LibraryListItem(
                             leadingIcon = { Icon(Icons.Default.Edit, contentDescription = null) }
                         )
                         DropdownMenuItem(
+                            text = { Text("Move to Vault") },
+                            onClick = { onMoveToVault(); showMenu = false },
+                            leadingIcon = { Icon(Icons.Default.Lock, contentDescription = null) }
+                        )
+                        DropdownMenuItem(
                             text = { Text("Delete") },
                             onClick = { onDelete(); showMenu = false },
                             leadingIcon = { Icon(Icons.Default.Delete, contentDescription = null) },
@@ -393,7 +411,8 @@ fun LibraryGrid(
     onItemLongClick: (LibraryItemEntity) -> Unit,
     onRename: (LibraryItemEntity) -> Unit,
     onDelete: (LibraryItemEntity) -> Unit,
-    onShare: (LibraryItemEntity) -> Unit
+    onShare: (LibraryItemEntity) -> Unit,
+    onMoveToVault: (LibraryItemEntity) -> Unit
 ) {
     LazyVerticalGrid(
         columns = GridCells.Fixed(2),
@@ -413,7 +432,8 @@ fun LibraryGrid(
                 onLongClick = { onItemLongClick(item) },
                 onRename = { onRename(item) },
                 onDelete = { onDelete(item) },
-                onShare = { onShare(item) }
+                onShare = { onShare(item) },
+                onMoveToVault = { onMoveToVault(item) }
             )
         }
     }
@@ -429,7 +449,8 @@ fun LibraryGridItem(
     onLongClick: () -> Unit,
     onRename: () -> Unit,
     onDelete: () -> Unit,
-    onShare: () -> Unit
+    onShare: () -> Unit,
+    onMoveToVault: () -> Unit
 ) {
     var showMenu by remember { mutableStateOf(false) }
 
@@ -510,6 +531,11 @@ fun LibraryGridItem(
                             leadingIcon = { Icon(Icons.Default.Edit, contentDescription = null) }
                         )
                         DropdownMenuItem(
+                            text = { Text("Move to Vault") },
+                            onClick = { onMoveToVault(); showMenu = false },
+                            leadingIcon = { Icon(Icons.Default.Lock, contentDescription = null) }
+                        )
+                        DropdownMenuItem(
                             text = { Text("Delete") },
                             onClick = { onDelete(); showMenu = false },
                             leadingIcon = { Icon(Icons.Default.Delete, contentDescription = null) },
@@ -556,6 +582,7 @@ fun SelectionActionBar(
     onClear: () -> Unit,
     onSelectAll: () -> Unit,
     onDelete: () -> Unit,
+    onMoveToVault: () -> Unit,
     onShare: () -> Unit
 ) {
     Surface(
@@ -585,6 +612,9 @@ fun SelectionActionBar(
             }
             IconButton(onClick = onShare) {
                 Icon(Icons.Default.Share, contentDescription = "Share selected")
+            }
+            IconButton(onClick = onMoveToVault) {
+                Icon(Icons.Default.Lock, contentDescription = "Move to Vault")
             }
             IconButton(onClick = onDelete) {
                 Icon(Icons.Default.Delete, contentDescription = "Delete selected", tint = MaterialTheme.colorScheme.error)

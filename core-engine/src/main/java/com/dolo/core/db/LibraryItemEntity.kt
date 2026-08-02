@@ -19,5 +19,6 @@ data class LibraryItemEntity(
     val isAudio: Boolean = false,
     val downloadedAt: Long = System.currentTimeMillis(),
     val playlistId: String? = null,
-    val playlistIndex: Int? = null
+    val playlistIndex: Int? = null,
+    val isInVault: Boolean = false
 )
