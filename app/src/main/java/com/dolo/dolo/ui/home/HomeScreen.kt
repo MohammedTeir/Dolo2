@@ -57,14 +57,17 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.dolo.dolo.ui.settings.SettingsViewModel
 
 @Composable
 fun HomeScreen(
     sharedUrl: String? = null,
     onMetadataExtracted: () -> Unit = {},
-    viewModel: HomeViewModel = hiltViewModel()
+    viewModel: HomeViewModel = hiltViewModel(),
+    settingsViewModel: SettingsViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val settingsState by settingsViewModel.uiState.collectAsStateWithLifecycle()
     val context = LocalContext.current
     val keyboardController = LocalSoftwareKeyboardController.current
     val lifecycleOwner = LocalLifecycleOwner.current
@@ -86,9 +89,18 @@ fun HomeScreen(
     DisposableEffect(lifecycleOwner) {
         val observer = LifecycleEventObserver { _, event ->
             if (event == Lifecycle.Event.ON_RESUME) {
-                // Here we would check if settings.clipboardWatcherEnabled is true
-                // For MVP, we'll just check if there's a link and maybe show a snackbar or just auto-paste if empty
-                // We'll skip auto-paste to avoid being annoying, but shortcut handles it.
+                if (settingsState.clipboardWatcherEnabled && uiState.url.isBlank()) {
+                    val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as? android.content.ClipboardManager
+                    val clip = clipboard?.primaryClip
+                    if (clip != null && clip.itemCount > 0) {
+                        val text = clip.getItemAt(0).coerceToText(context).toString()
+                        if (text.contains("http") && text != uiState.url) {
+                            // We could show a snackbar or banner here.
+                            // For now, let's just auto-paste if it looks like a link
+                            viewModel.onUrlChanged(text)
+                        }
+                    }
+                }
             }
         }
         lifecycleOwner.lifecycle.addObserver(observer)

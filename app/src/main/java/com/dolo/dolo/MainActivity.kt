@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
@@ -20,6 +21,7 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.dolo.core.repository.SettingsRepository
 import com.dolo.dolo.ui.onboarding.OnboardingScreen
 import com.dolo.dolo.ui.settings.AboutScreen
 import com.dolo.dolo.ui.settings.AudioSettingsScreen
@@ -33,9 +35,13 @@ import com.dolo.dolo.ui.vault.VaultScreen
 import com.dolo.dolo.ui.vault.VaultSetupScreen
 import com.dolo.dolo.ui.vault.VaultViewModel
 import dagger.hilt.android.AndroidEntryPoint
+import javax.inject.Inject
 
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
+
+    @Inject
+    lateinit var settingsRepository: SettingsRepository
 
     private var sharedUrl by mutableStateOf<String?>(null)
 
@@ -46,7 +52,14 @@ class MainActivity : ComponentActivity() {
         handleIntent(intent)
 
         setContent {
-            DoloTheme {
+            val themeMode by settingsRepository.themeMode.collectAsState(initial = "System")
+            val darkTheme = when (themeMode) {
+                "Light" -> false
+                "Dark" -> true
+                else -> androidx.compose.foundation.isSystemInDarkTheme()
+            }
+
+            DoloTheme(darkTheme = darkTheme) {
                 val navController = rememberNavController()
 
                 Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->

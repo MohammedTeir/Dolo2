@@ -23,15 +23,20 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.work.OneTimeWorkRequestBuilder
+import androidx.work.WorkManager
+import com.dolo.core.worker.AppUpdateWorker
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AboutScreen(
     onBack: () -> Unit
 ) {
+    val context = LocalContext.current
     Scaffold(
         topBar = {
             TopAppBar(
@@ -102,7 +107,10 @@ fun AboutScreen(
                     )
                     Spacer(modifier = Modifier.height(16.dp))
                     Button(
-                        onClick = { /* Check for app update */ },
+                        onClick = {
+                            val request = OneTimeWorkRequestBuilder<AppUpdateWorker>().build()
+                            WorkManager.getInstance(context).enqueue(request)
+                        },
                         modifier = Modifier.fillMaxWidth()
                     ) {
                         Text("Check for App Update")

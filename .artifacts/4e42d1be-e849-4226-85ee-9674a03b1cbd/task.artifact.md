@@ -1,25 +1,20 @@
-# Task List - Phase 6: Vault & Privacy
+# Task List - Phase 5 Polish & Fixes
 
-- [ ] Add Dependencies
-    - [x] Update `libs.versions.toml` with `security-crypto` and `biometric`
-    - [ ] Update `app/build.gradle.kts`
-- [ ] Update Database Schema
-    - [ ] Add `isInVault` to `LibraryItemEntity`
-    - [ ] Update `LibraryItemDao` with vault queries
-    - [ ] Bump `DoloDatabase` version to 3
-- [ ] Implement Vault Logic
-    - [ ] Create `VaultRepository` for encrypted storage and biometrics
-    - [ ] Update `LibraryRepository` with `moveToVault` and `removeFromVault`
-- [ ] Build Vault UI
-    - [ ] Create `VaultSetupScreen` (Password/PIN setup)
-    - [ ] Create `VaultAuthScreen` (Biometric/PIN entry)
-    - [ ] Create `VaultScreen` (Private library view)
-- [ ] Integration
-    - [ ] Add "Move to Vault" action in `LibraryScreen`
-    - [ ] Update `MainActivity` with Vault navigation routes
-    - [ ] Add Vault entry point in `MainScreen` or `SettingsScreen`
+- [ ] Update `SettingsRepository`
+    - [ ] Add `downloadLocationUri` and `downloadLocationName` keys
+- [ ] Create `SettingsComponents.kt`
+    - [ ] Extract reusable UI elements (Switch, Radio, Slider)
+- [ ] Implement Live Theme Switching
+    - [ ] Update `MainActivity.kt` to observe and apply theme
+- [ ] Polish Settings Screens
+    - [ ] Update `DownloadSettingsScreen.kt`: Add SAF Folder Picker and Speed Limit Slider
+    - [ ] Update `EngineSettingsScreen.kt`: Add Cookies File Picker and Update Engine Trigger
+    - [ ] Update `AboutScreen.kt`: Add App Update Trigger
+    - [ ] Update `AudioSettingsScreen.kt`: Use centralized components
+    - [ ] Update `GeneralSettingsScreen.kt`: Use centralized components
+- [ ] Smart Features Logic
+    - [ ] Implement actual clipboard check in `HomeScreen.kt`
 - [ ] Verification
-    - [ ] Verify PIN setup and persistence
-    - [ ] Verify files are moved correctly to app-private storage
-    - [ ] Verify biometric unlock works
-    - [ ] Verify vaulted files are hidden from the main library
+    - [ ] Verify theme switches instantly
+    - [ ] Verify custom save location works
+    - [ ] Verify cookies import persists

@@ -1,5 +1,7 @@
 package com.dolo.dolo.ui.settings
 
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -10,6 +12,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.Cookie
 import androidx.compose.material.icons.filled.Update
 import androidx.compose.material3.Button
@@ -25,10 +28,16 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.work.OneTimeWorkRequestBuilder
+import androidx.work.WorkManager
+import com.dolo.core.worker.EngineUpdateWorker
+import java.io.File
+import java.io.FileOutputStream
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -37,6 +46,23 @@ fun EngineSettingsScreen(
     viewModel: SettingsViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val context = LocalContext.current
+
+    val cookiePickerLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.OpenDocument()
+    ) { uri ->
+        uri?.let {
+            val contentResolver = context.contentResolver
+            val inputStream = contentResolver.openInputStream(it)
+            val cookiesFile = File(context.filesDir, "cookies.txt")
+            inputStream?.use { input ->
+                FileOutputStream(cookiesFile).use { output ->
+                    input.copyTo(output)
+                }
+            }
+            viewModel.updateCookiesFilePath(cookiesFile.absolutePath)
+        }
+    }
 
     Scaffold(
         topBar = {
@@ -69,7 +95,10 @@ fun EngineSettingsScreen(
                     )
                     Spacer(modifier = Modifier.padding(vertical = 8.dp))
                     Button(
-                        onClick = { /* Trigger EngineUpdateWorker manually */ },
+                        onClick = {
+                            val request = OneTimeWorkRequestBuilder<EngineUpdateWorker>().build()
+                            WorkManager.getInstance(context).enqueue(request)
+                        },
                         modifier = Modifier.fillMaxWidth()
                     ) {
                         Icon(Icons.Default.Update, contentDescription = null)
@@ -100,7 +129,7 @@ fun EngineSettingsScreen(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Button(
-                            onClick = { /* File picker for cookies.txt */ },
+                            onClick = { cookiePickerLauncher.launch(arrayOf("text/plain")) },
                             modifier = Modifier.weight(1f)
                         ) {
                             Icon(Icons.Default.Cookie, contentDescription = null)
@@ -110,9 +139,12 @@ fun EngineSettingsScreen(
                         
                         if (uiState.cookiesFilePath != null) {
                             Spacer(modifier = Modifier.width(8.dp))
-                            IconButton(onClick = { viewModel.updateCookiesFilePath(null) }) {
+                            IconButton(onClick = { 
+                                File(context.filesDir, "cookies.txt").delete()
+                                viewModel.updateCookiesFilePath(null) 
+                            }) {
                                 Icon(
-                                    imageVector = Icons.AutoMirrored.Filled.ArrowBack, // Should be a clear icon
+                                    imageVector = Icons.Default.Clear,
                                     contentDescription = "Clear cookies",
                                     tint = MaterialTheme.colorScheme.error
                                 )
@@ -122,7 +154,7 @@ fun EngineSettingsScreen(
                     
                     if (uiState.cookiesFilePath != null) {
                         Text(
-                            text = "Currently using: ${uiState.cookiesFilePath}",
+                            text = "Currently using: cookies.txt",
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.primary,
                             modifier = Modifier.padding(top = 8.dp)

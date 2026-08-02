@@ -37,6 +37,9 @@ class SettingsRepository @Inject constructor(
         
         val LAST_CHECKED_APP_VERSION = stringPreferencesKey("last_checked_app_version")
         val COOKIES_FILE_PATH = stringPreferencesKey("cookies_file_path")
+        
+        val DOWNLOAD_LOCATION_URI = stringPreferencesKey("download_location_uri")
+        val DOWNLOAD_LOCATION_NAME = stringPreferencesKey("download_location_name")
     }
 
     val maxConcurrentDownloads: Flow<Int> = context.dataStore.data
@@ -102,6 +105,16 @@ class SettingsRepository @Inject constructor(
     val cookiesFilePath: Flow<String?> = context.dataStore.data
         .map { preferences ->
             preferences[PreferencesKeys.COOKIES_FILE_PATH]
+        }
+
+    val downloadLocationUri: Flow<String?> = context.dataStore.data
+        .map { preferences ->
+            preferences[PreferencesKeys.DOWNLOAD_LOCATION_URI]
+        }
+
+    val downloadLocationName: Flow<String?> = context.dataStore.data
+        .map { preferences ->
+            preferences[PreferencesKeys.DOWNLOAD_LOCATION_NAME]
         }
 
     suspend fun updateMaxConcurrentDownloads(value: Int) {
@@ -182,6 +195,18 @@ class SettingsRepository @Inject constructor(
                 preferences.remove(PreferencesKeys.COOKIES_FILE_PATH)
             } else {
                 preferences[PreferencesKeys.COOKIES_FILE_PATH] = value
+            }
+        }
+    }
+
+    suspend fun updateDownloadLocation(uri: String?, name: String?) {
+        context.dataStore.edit { preferences ->
+            if (uri == null) {
+                preferences.remove(PreferencesKeys.DOWNLOAD_LOCATION_URI)
+                preferences.remove(PreferencesKeys.DOWNLOAD_LOCATION_NAME)
+            } else {
+                preferences[PreferencesKeys.DOWNLOAD_LOCATION_URI] = uri
+                preferences[PreferencesKeys.DOWNLOAD_LOCATION_NAME] = name ?: "Custom Folder"
             }
         }
     }

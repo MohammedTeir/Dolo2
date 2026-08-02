@@ -23,7 +23,9 @@ data class SettingsUiState(
     val namingMode: String = "Clean Title",
     val organizePlaylistsInFolders: Boolean = true,
     val clipboardWatcherEnabled: Boolean = false,
-    val cookiesFilePath: String? = null
+    val cookiesFilePath: String? = null,
+    val downloadLocationUri: String? = null,
+    val downloadLocationName: String? = null
 )
 
 @HiltViewModel
@@ -43,7 +45,9 @@ class SettingsViewModel @Inject constructor(
         settingsRepository.namingMode,
         settingsRepository.organizePlaylistsInFolders,
         settingsRepository.clipboardWatcherEnabled,
-        settingsRepository.cookiesFilePath
+        settingsRepository.cookiesFilePath,
+        settingsRepository.downloadLocationUri,
+        settingsRepository.downloadLocationName
     ) { args ->
         SettingsUiState(
             maxConcurrentDownloads = args[0] as Int,
@@ -57,7 +61,9 @@ class SettingsViewModel @Inject constructor(
             namingMode = args[8] as String,
             organizePlaylistsInFolders = args[9] as Boolean,
             clipboardWatcherEnabled = args[10] as Boolean,
-            cookiesFilePath = args[11] as String?
+            cookiesFilePath = args[11] as String?,
+            downloadLocationUri = args[12] as String?,
+            downloadLocationName = args[13] as String?
         )
     }.stateIn(
         scope = viewModelScope,
@@ -111,5 +117,9 @@ class SettingsViewModel @Inject constructor(
 
     fun updateCookiesFilePath(value: String?) {
         viewModelScope.launch { settingsRepository.updateCookiesFilePath(value) }
+    }
+
+    fun updateDownloadLocation(uri: String?, name: String?) {
+        viewModelScope.launch { settingsRepository.updateDownloadLocation(uri, name) }
     }
 }
