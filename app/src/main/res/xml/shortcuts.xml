@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<shortcuts xmlns:android="http://schemas.android.com/apk/res/android">
+    <shortcut
+        android:shortcutId="paste_and_download"
+        android:enabled="true"
+        android:icon="@drawable/ic_launcher_foreground"
+        android:shortcutShortLabel="@string/shortcut_paste_label"
+        android:shortcutLongLabel="@string/shortcut_paste_long_label">
+        <intent
+            android:action="com.dolo.dolo.ACTION_PASTE_DOWNLOAD"
+            android:targetPackage="com.dolo.dolo"
+            android:targetClass="com.dolo.dolo.MainActivity" />
+        <categories android:name="android.shortcut.conversation" />
+    </shortcut>
+</shortcuts>
