@@ -19,7 +19,7 @@ android {
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
         ndk {
-            abiFilters.addAll(listOf("x86", "x86_64", "armeabi-v7a", "arm64-v8a"))
+            abiFilters.addAll(listOf("arm64-v8a"))
         }
     }
 
@@ -27,7 +27,7 @@ android {
         abi {
             isEnable = true
             reset()
-            include("arm64-v8a", "armeabi-v7a", "x86", "x86_64")
+            include("arm64-v8a")
             isUniversalApk = true
         }
     }
