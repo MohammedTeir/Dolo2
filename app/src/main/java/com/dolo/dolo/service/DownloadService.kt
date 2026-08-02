@@ -43,7 +43,7 @@ class DownloadService : Service() {
     override fun onCreate() {
         super.onCreate()
         createNotificationChannel()
-        startForeground(NOTIFICATION_ID, buildNotification("Dolo Engine active", 0f, 0, 0))
+        startForeground(NOTIFICATION_ID, buildNotification(title = "Dolo Downloader", text = "Dolo Engine active", progress = 0f))
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
