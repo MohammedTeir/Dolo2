@@ -13,6 +13,8 @@ import kotlinx.coroutines.withContext
 import javax.inject.Inject
 import javax.inject.Singleton
 
+import android.util.Log
+
 @Singleton
 class EngineInitializer @Inject constructor(
     @ApplicationContext private val context: Context,
@@ -45,7 +47,15 @@ class EngineInitializer @Inject constructor(
                 isInitialized = true
                 _initState.value = EngineInitState.Success
             } catch (e: Exception) {
-                _initState.value = EngineInitState.Error(e.localizedMessage ?: "Unknown initialization error")
+                Log.e("EngineInitializer", "Failed to initialize engine", e)
+                val causeMsg = e.cause?.message
+                val mainMsg = e.localizedMessage ?: "Unknown initialization error"
+                val detailedError = if (!causeMsg.isNullOrBlank() && causeMsg != mainMsg) {
+                    "$mainMsg ($causeMsg)"
+                } else {
+                    mainMsg
+                }
+                _initState.value = EngineInitState.Error(detailedError)
             }
         }
     }
