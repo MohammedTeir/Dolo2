@@ -89,16 +89,12 @@ class DownloadService : Service() {
 
                 val request = DownloadRequestBuilder.buildRequest(params)
 
-                val callback = object : DownloadProgressCallback {
-                    override fun onProgressUpdate(progress: Float, etaInSeconds: Long, line: String) {
-                        serviceScope.launch {
-                            downloadDao.updateProgress(params.id, 0L, progress)
-                            updateNotification("Downloading: ${progress.toInt()}%", progress)
-                        }
+                youtubeDL.execute(request, params.id) { progress, etaInSeconds, line ->
+                    serviceScope.launch {
+                        downloadDao.updateProgress(params.id, 0L, progress)
+                        updateNotification("Downloading: ${progress.toInt()}%", progress)
                     }
                 }
-
-                youtubeDL.execute(request, params.id, callback)
 
                 // Download complete
                 downloadDao.updateStatus(params.id, "COMPLETED")
