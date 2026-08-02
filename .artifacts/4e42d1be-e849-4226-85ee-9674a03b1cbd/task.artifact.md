@@ -1,0 +1,21 @@
+# Task List - Phase 4: Queue & Reliability
+
+- [ ] Update Database Schema
+    - [ ] Add `priority` and `downloadSpeed` to `DownloadEntity`
+    - [ ] Update `DownloadDao` with queue management queries
+- [ ] Implement Settings
+    - [ ] Create `SettingsRepository` using DataStore
+    - [ ] Add settings for max concurrency, wifi-only, speed limit, connections
+- [ ] Enhance Repositories
+    - [ ] Update `DownloadRepository` with pause/resume and reordering logic
+- [ ] Refactor Download Service
+    - [ ] Implement download pooling and concurrency control
+    - [ ] Handle PAUSE/RESUME actions
+    - [ ] Add network listener for wifi-only check
+- [ ] Update UI
+    - [ ] Add Pause/Resume/Reorder to `DownloadQueueViewModel`
+    - [ ] Update `DownloadQueueScreen` with new controls
+- [ ] Verification
+    - [ ] Test queueing with concurrency limits
+    - [ ] Test pause/resume
+    - [ ] Test reliability after app restart
