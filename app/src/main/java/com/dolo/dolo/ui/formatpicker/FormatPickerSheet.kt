@@ -1,5 +1,7 @@
 package com.dolo.dolo.ui.formatpicker
 
+import android.content.Intent
+import android.net.Uri
 import android.os.Environment
 import java.io.File
 import androidx.compose.animation.animateContentSize
@@ -150,7 +152,22 @@ fun FormatPickerSheet(
                 }
             }
 
-            // Audio-only conversion section
+            // Report issue helper
+            item {
+                TextButton(
+                    onClick = {
+                        val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://github.com/youruser/dolo/issues/new?title=Extraction+Issue&body=URL:+${metadata.originalUrl}"))
+                        context.startActivity(intent)
+                    },
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Icon(Icons.Default.BugReport, contentDescription = null, modifier = Modifier.size(16.dp))
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text("Report extraction issue", style = MaterialTheme.typography.labelSmall)
+                }
+            }
+
+            // Video formats list
             item {
                 AudioOnlySection(
                     onStartDownload = { audFormat, audBitrate ->

@@ -26,7 +26,14 @@ private val LICENSES = listOf(
     LicenseInfo("youtubedl-android", "yausername / junkfood02", "GPL v3", "https://github.com/junkfood02/youtubedl-android"),
     LicenseInfo("Jetpack Compose", "Google", "Apache 2.0", "https://developer.android.com/jetpack/compose"),
     LicenseInfo("Hilt", "Google", "Apache 2.0", "https://dagger.dev/hilt/"),
-    LicenseInfo("Coil", "Coil Contributors", "Apache 2.0", "https://coil-kt.github.io/coil/")
+    LicenseInfo("Coil", "Coil Contributors", "Apache 2.0", "https://coil-kt.github.io/coil/"),
+    // Adding more from libs.versions.toml
+    LicenseInfo("Room Database", "Google", "Apache 2.0", "https://developer.android.com/training/data-storage/room"),
+    LicenseInfo("WorkManager", "Google", "Apache 2.0", "https://developer.android.com/topic/libraries/architecture/workmanagement"),
+    LicenseInfo("DataStore", "Google", "Apache 2.0", "https://developer.android.com/topic/libraries/architecture/datastore"),
+    LicenseInfo("OkHttp", "Square", "Apache 2.0", "https://square.github.io/okhttp/"),
+    LicenseInfo("Jackson", "FasterXML", "Apache 2.0", "https://github.com/FasterXML/jackson"),
+    LicenseInfo("Material Icons", "Google", "Apache 2.0", "https://fonts.google.com/icons")
 )
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -51,6 +58,14 @@ fun LicensesScreen(
                 .fillMaxSize()
                 .padding(innerPadding)
         ) {
+            item {
+                Text(
+                    text = "Dolo is built using the following open source software and libraries. We are grateful to the developers who make this possible.",
+                    modifier = Modifier.padding(16.dp),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
             items(LICENSES) { license ->
                 Column(
                     modifier = Modifier

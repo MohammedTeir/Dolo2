@@ -1,14 +1,19 @@
-# Task List - Dynamic Format Display
+# Task List - Phase 8: Hardening & Release Prep
 
-- [x] Update Engine Models
-    - [x] Add `abr` and `vbr` to `FormatInfo.kt`
-- [x] Update Extractor Logic
-    - [x] Map bitrates from `yt-dlp` response in `YtDlpExtractor.kt`
-- [x] Refactor Format Picker UI
-    - [x] Remove aggressive `distinctBy` filtering in `FormatPickerSheet.kt`
-    - [x] Show codec details for every format
-    - [x] Display bitrates (k) for better quality comparison
-    - [x] Include format notes (e.g., "HDR", "Premium") in the list
+- [x] Specialized Error Handling
+    - [x] Update `YtDlpExtractor.kt` with friendly error mapping
+    - [x] Update `DownloadService.kt` with better error reporting
+- [x] Notification Enhancements
+    - [x] Add "Retry" action to failure notifications in `DownloadService.kt`
+- [x] UI Polish & Helpful Prompts
+    - [x] Add Snackbar with "Help" action to `HomeScreen.kt`
+    - [x] Add "Report Issue" to `FormatPickerSheet.kt`
+    - [x] Implement URL History UI
+    - [x] Finalize Search result UI
+- [x] Compliance & Final Touches
+    - [x] Expand `LicensesScreen.kt` with assets and missing libs
+    - [x] Add Privacy Policy dialog and Feedback intent to `AboutScreen.kt`
+    - [x] Implement "What's New" version check
 - [x] Verification
-    - [x] Test with multi-codec videos (VP9/AV1/H.264)
-    - [x] Test with audio-only sources
+    - [x] RTL Layout check
+    - [x] Clean release build test

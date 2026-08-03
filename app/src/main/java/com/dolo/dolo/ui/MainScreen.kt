@@ -108,6 +108,7 @@ fun MainScreen(
                 NavigationTab.HOME -> {
                     HomeScreen(
                         sharedUrl = sharedUrl,
+                        onNavigateToSettings = onNavigateToSettings,
                         viewModel = homeViewModel
                     )
                 }

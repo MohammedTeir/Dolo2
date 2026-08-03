@@ -34,4 +34,9 @@ object DatabaseModule {
     fun provideLibraryItemDao(database: DoloDatabase): LibraryItemDao {
         return database.libraryItemDao()
     }
+
+    @Provides
+    fun provideHistoryDao(database: DoloDatabase): HistoryDao {
+        return database.historyDao()
+    }
 }

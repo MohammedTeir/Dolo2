@@ -172,6 +172,28 @@ class DownloadService : Service() {
         activeJobs[download.id] = job
     }
 
+    private fun pauseDownload(downloadId: String) {
+        serviceScope.launch {
+            youtubeDL.destroyProcessById(downloadId)
+            activeJobs[downloadId]?.cancel()
+            activeJobs.remove(downloadId)
+            downloadDao.updateStatus(downloadId, "PAUSED")
+            updateNotification("Download paused", 0f, downloadId = downloadId)
+            processQueue()
+        }
+    }
+
+    private fun cancelDownload(downloadId: String) {
+        serviceScope.launch {
+            youtubeDL.destroyProcessById(downloadId)
+            activeJobs[downloadId]?.cancel()
+            activeJobs.remove(downloadId)
+            downloadDao.updateStatus(downloadId, "CANCELLED")
+            updateNotification("Download cancelled", 0f, downloadId = downloadId)
+            processQueue()
+        }
+    }
+
     private suspend fun executeDownload(download: DownloadEntity) {
         val title = download.title ?: "Media Download"
         try {
@@ -243,9 +265,9 @@ class DownloadService : Service() {
         } catch (e: Exception) {
             val status = downloadDao.getDownloadById(download.id)?.status
             if (status != "PAUSED" && status != "CANCELLED") {
-                val errorMsg = e.localizedMessage ?: "Unknown error"
+                val errorMsg = mapDownloadError(e)
                 downloadDao.updateStatus(download.id, "FAILED", errorMessage = errorMsg)
-                updateNotification(title = title, text = "Failed: $errorMsg", progress = 0f, downloadId = download.id)
+                updateNotification(title = title, text = "Failed: $errorMsg", progress = 0f, downloadId = download.id, isFailed = true)
             }
         } finally {
             activeJobs.remove(download.id)
@@ -253,29 +275,18 @@ class DownloadService : Service() {
         }
     }
 
-    private fun pauseDownload(downloadId: String) {
-        serviceScope.launch {
-            youtubeDL.destroyProcessById(downloadId)
-            activeJobs[downloadId]?.cancel()
-            activeJobs.remove(downloadId)
-            downloadDao.updateStatus(downloadId, "PAUSED")
-            updateNotification("Download paused", 0f, downloadId = downloadId)
-            processQueue()
+    private fun mapDownloadError(e: Exception): String {
+        val msg = e.message ?: "Unknown error"
+        return when {
+            msg.contains("403", ignoreCase = true) -> "Forbidden (403). Try updating the engine in Settings."
+            msg.contains("429", ignoreCase = true) -> "Too many requests. Please wait and try again later."
+            msg.contains("Unable to download video data", ignoreCase = true) -> "Connection lost or blocked."
+            msg.contains("No such file", ignoreCase = true) -> "Storage error. Reset your download folder in Settings."
+            else -> msg
         }
     }
 
-    private fun cancelDownload(downloadId: String) {
-        serviceScope.launch {
-            youtubeDL.destroyProcessById(downloadId)
-            activeJobs[downloadId]?.cancel()
-            activeJobs.remove(downloadId)
-            downloadDao.updateStatus(downloadId, "CANCELLED")
-            updateNotification("Download cancelled", 0f, downloadId = downloadId)
-            processQueue()
-        }
-    }
-
-    private fun buildNotification(title: String, text: String, progress: Float, downloadId: String? = null): android.app.Notification {
+    private fun buildNotification(title: String, text: String, progress: Float, downloadId: String? = null, isFailed: Boolean = false): android.app.Notification {
         val isIndeterminate = progress <= 0f && text.startsWith("Downloading")
         val builder = NotificationCompat.Builder(this, CHANNEL_ID)
             .setContentTitle(title)
@@ -283,30 +294,40 @@ class DownloadService : Service() {
             .setSmallIcon(android.R.drawable.stat_sys_download)
             .setProgress(100, progress.toInt().coerceAtLeast(0), isIndeterminate)
             .setOngoing(progress < 100f && !text.contains("cancelled") && !text.contains("failed") && !text.contains("paused"))
+            .setAutoCancel(isFailed)
 
-        if (downloadId != null && (text.startsWith("Downloading") || text.startsWith("Starting"))) {
-            val pauseIntent = Intent(this, DownloadService::class.java).apply {
-                action = "PAUSE_DOWNLOAD"
-                putExtra("DOWNLOAD_ID", downloadId)
+        if (downloadId != null) {
+            if (text.startsWith("Downloading") || text.startsWith("Starting")) {
+                val pauseIntent = Intent(this, DownloadService::class.java).apply {
+                    action = "PAUSE_DOWNLOAD"
+                    putExtra("DOWNLOAD_ID", downloadId)
+                }
+                val pausePI = android.app.PendingIntent.getService(this, downloadId.hashCode(), pauseIntent, android.app.PendingIntent.FLAG_UPDATE_CURRENT or android.app.PendingIntent.FLAG_IMMUTABLE)
+
+                val cancelIntent = Intent(this, DownloadService::class.java).apply {
+                    action = "CANCEL_DOWNLOAD"
+                    putExtra("DOWNLOAD_ID", downloadId)
+                }
+                val cancelPI = android.app.PendingIntent.getService(this, downloadId.hashCode() + 1, cancelIntent, android.app.PendingIntent.FLAG_UPDATE_CURRENT or android.app.PendingIntent.FLAG_IMMUTABLE)
+
+                builder.addAction(android.R.drawable.ic_media_pause, "Pause", pausePI)
+                builder.addAction(android.R.drawable.ic_menu_close_clear_cancel, "Cancel", cancelPI)
+            } else if (isFailed) {
+                val retryIntent = Intent(this, DownloadService::class.java).apply {
+                    action = "RESUME_DOWNLOAD"
+                    putExtra("DOWNLOAD_ID", downloadId)
+                }
+                val retryPI = android.app.PendingIntent.getService(this, downloadId.hashCode() + 2, retryIntent, android.app.PendingIntent.FLAG_UPDATE_CURRENT or android.app.PendingIntent.FLAG_IMMUTABLE)
+                builder.addAction(android.R.drawable.ic_menu_rotate, "Retry", retryPI)
             }
-            val pausePI = android.app.PendingIntent.getService(this, downloadId.hashCode(), pauseIntent, android.app.PendingIntent.FLAG_UPDATE_CURRENT or android.app.PendingIntent.FLAG_IMMUTABLE)
-
-            val cancelIntent = Intent(this, DownloadService::class.java).apply {
-                action = "CANCEL_DOWNLOAD"
-                putExtra("DOWNLOAD_ID", downloadId)
-            }
-            val cancelPI = android.app.PendingIntent.getService(this, downloadId.hashCode() + 1, cancelIntent, android.app.PendingIntent.FLAG_UPDATE_CURRENT or android.app.PendingIntent.FLAG_IMMUTABLE)
-
-            builder.addAction(android.R.drawable.ic_media_pause, "Pause", pausePI)
-            builder.addAction(android.R.drawable.ic_menu_close_clear_cancel, "Cancel", cancelPI)
         }
 
         return builder.build()
     }
 
-    private fun updateNotification(text: String, progress: Float, title: String = "Dolo Downloader", downloadId: String? = null) {
+    private fun updateNotification(text: String, progress: Float, title: String = "Dolo Downloader", downloadId: String? = null, isFailed: Boolean = false) {
         val manager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-        manager.notify(NOTIFICATION_ID, buildNotification(title = title, text = text, progress = progress, downloadId = downloadId))
+        manager.notify(NOTIFICATION_ID, buildNotification(title = title, text = text, progress = progress, downloadId = downloadId, isFailed = isFailed))
     }
 
     private fun createNotificationChannel() {

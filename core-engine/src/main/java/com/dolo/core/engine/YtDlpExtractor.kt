@@ -30,7 +30,26 @@ class YtDlpExtractor @Inject constructor(
 
             Result.success(mapMetadata(videoInfo, url, isPlaylist))
         } catch (e: Exception) {
-            Result.failure(e)
+            Result.failure(mapException(e))
+        }
+    }
+
+    private fun mapException(e: Exception): Exception {
+        val message = e.message ?: return e
+        return when {
+            message.contains("Unsupported URL", ignoreCase = true) -> 
+                Exception("Unsupported site. Dolo might not support this platform yet.")
+            message.contains("Private video", ignoreCase = true) -> 
+                Exception("This video is private. Please add your cookies in Engine Settings.")
+            message.contains("Age restricted", ignoreCase = true) -> 
+                Exception("Age restricted video. Please add your cookies in Engine Settings to verify your age.")
+            message.contains("Incomplete YouTube ID", ignoreCase = true) ->
+                Exception("Invalid link. Please check the URL and try again.")
+            message.contains("Sign in to confirm your age", ignoreCase = true) ->
+                Exception("Sign in required (Age Restricted). Please import cookies in Engine Settings.")
+            message.contains("No such file or directory", ignoreCase = true) ->
+                Exception("Storage error. Please check your save location in Settings.")
+            else -> e
         }
     }
 

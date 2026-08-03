@@ -5,16 +5,13 @@ import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.dolo.core.db.DownloadEntity
+import com.dolo.core.db.HistoryEntity
 import com.dolo.core.model.PlaylistInfo
 import com.dolo.core.model.VideoMetadata
 import com.dolo.core.repository.DownloadRepository
 import com.dolo.core.repository.SettingsRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
@@ -26,7 +23,8 @@ data class HomeUiState(
     val extractedPlaylist: PlaylistInfo? = null,
     val showAmbiguityPrompt: Boolean = false,
     val duplicateDownload: DownloadEntity? = null,
-    val showDuplicateWarning: Boolean = false
+    val showDuplicateWarning: Boolean = false,
+    val history: List<HistoryEntity> = emptyList()
 )
 
 @HiltViewModel
@@ -36,7 +34,16 @@ class HomeViewModel @Inject constructor(
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(HomeUiState())
-    val uiState: StateFlow<HomeUiState> = _uiState.asStateFlow()
+    val uiState: StateFlow<HomeUiState> = combine(
+        _uiState,
+        downloadRepository.observeHistory()
+    ) { state, history ->
+        state.copy(history = history)
+    }.stateIn(
+        scope = viewModelScope,
+        started = SharingStarted.WhileSubscribed(5_000),
+        initialValue = HomeUiState()
+    )
 
     fun onUrlChanged(url: String) {
         _uiState.value = _uiState.value.copy(

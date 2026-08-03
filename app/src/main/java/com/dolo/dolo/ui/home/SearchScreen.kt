@@ -25,11 +25,10 @@ import com.dolo.core.model.VideoMetadata
 @Composable
 fun SearchScreen(
     onResultClick: (String) -> Unit,
-    viewModel: HomeViewModel // We'll reuse HomeViewModel or create a SearchViewModel
+    viewModel: HomeViewModel
 ) {
     var query by remember { mutableStateOf("") }
     val uiState by viewModel.uiState.collectAsState()
-    // For MVP, we'll just allow searching and clicking on results to go to download flow
     
     Column(modifier = Modifier.fillMaxSize()) {
         OutlinedTextField(
@@ -43,15 +42,71 @@ fun SearchScreen(
             singleLine = true,
             keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
             keyboardActions = KeyboardActions(onSearch = {
-                // Trigger search logic
-                // viewModel.search(query)
+                if (query.isNotBlank()) {
+                    viewModel.onUrlChanged(query)
+                    viewModel.extractInfo(query) // Extractor handles "ytsearch:"
+                }
             }),
             shape = RoundedCornerShape(12.dp)
         )
         
-        // Placeholder for results
-        Box(modifier = Modifier.weight(1f), contentAlignment = Alignment.Center) {
-            Text("Search results will appear here", color = MaterialTheme.colorScheme.onSurfaceVariant)
+        if (uiState.isExtracting) {
+            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                CircularProgressIndicator()
+            }
+        } else if (uiState.extractedMetadata != null) {
+            LazyColumn(modifier = Modifier.fillMaxSize()) {
+                item {
+                    SearchResultItem(
+                        metadata = uiState.extractedMetadata!!,
+                        onClick = { onResultClick(uiState.extractedMetadata!!.originalUrl) }
+                    )
+                }
+            }
+        } else {
+            Box(modifier = Modifier.weight(1f), contentAlignment = Alignment.Center) {
+                Text("Search results will appear here", color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+        }
+    }
+}
+
+@Composable
+fun SearchResultItem(
+    metadata: VideoMetadata,
+    onClick: () -> Unit
+) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 8.dp)
+            .clickable(onClick = onClick),
+        shape = RoundedCornerShape(12.dp)
+    ) {
+        Row(modifier = Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
+            AsyncImage(
+                model = metadata.thumbnailUrl,
+                contentDescription = null,
+                modifier = Modifier
+                    .size(width = 100.dp, height = 56.dp)
+                    .clip(RoundedCornerShape(8.dp)),
+                contentScale = ContentScale.Crop
+            )
+            Spacer(modifier = Modifier.width(12.dp))
+            Column {
+                Text(
+                    text = metadata.title,
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = FontWeight.Bold,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis
+                )
+                Text(
+                    text = metadata.uploader ?: "",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
         }
     }
 }

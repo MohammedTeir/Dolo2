@@ -4,6 +4,8 @@ import android.content.Context
 import android.content.Intent
 import com.dolo.core.db.DownloadDao
 import com.dolo.core.db.DownloadEntity
+import com.dolo.core.db.HistoryDao
+import com.dolo.core.db.HistoryEntity
 import com.dolo.core.engine.YtDlpExtractor
 import com.dolo.core.model.DownloadParams
 import com.dolo.core.model.PlaylistInfo
@@ -22,15 +24,32 @@ class DownloadRepository @Inject constructor(
     @param:ApplicationContext private val context: Context,
     private val extractor: YtDlpExtractor,
     private val downloadDao: DownloadDao,
+    private val historyDao: HistoryDao,
     private val settingsRepository: SettingsRepository
 ) {
 
     suspend fun extractInfo(url: String): Result<VideoMetadata> {
-        return extractor.extractInfo(url)
+        val result = extractor.extractInfo(url)
+        result.onSuccess { metadata ->
+            historyDao.insertHistory(HistoryEntity(url = url, title = metadata.title))
+        }
+        return result
     }
 
     suspend fun extractPlaylist(url: String): Result<PlaylistInfo> {
-        return extractor.extractPlaylist(url)
+        val result = extractor.extractPlaylist(url)
+        result.onSuccess { playlist ->
+            historyDao.insertHistory(HistoryEntity(url = url, title = playlist.title))
+        }
+        return result
+    }
+
+    fun observeHistory(): Flow<List<HistoryEntity>> {
+        return historyDao.observeRecentHistory()
+    }
+
+    suspend fun clearHistory() {
+        historyDao.clearHistory()
     }
 
     suspend fun checkDuplicate(url: String, formatId: String?): DownloadEntity? {

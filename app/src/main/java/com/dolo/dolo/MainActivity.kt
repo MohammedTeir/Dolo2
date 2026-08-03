@@ -8,14 +8,8 @@ import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.setValue
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.navigation.compose.NavHost
@@ -60,6 +54,17 @@ class MainActivity : ComponentActivity() {
                 "Light" -> false
                 "Dark" -> true
                 else -> androidx.compose.foundation.isSystemInDarkTheme()
+            }
+
+            var showChangelog by remember { mutableStateOf(false) }
+            val lastSeenVersion by settingsRepository.lastCheckedAppVersion.collectAsState(initial = null)
+            
+            LaunchedEffect(lastSeenVersion) {
+                val currentVersion = "1.0"
+                if (lastSeenVersion != null && lastSeenVersion != currentVersion) {
+                    showChangelog = true
+                }
+                settingsRepository.updateLastCheckedAppVersion(currentVersion)
             }
 
             DoloTheme(darkTheme = darkTheme) {
@@ -190,6 +195,26 @@ class MainActivity : ComponentActivity() {
                         composable("settings_licenses") {
                             com.dolo.dolo.ui.settings.LicensesScreen(onBack = { navController.popBackStack() })
                         }
+                    }
+
+                    if (showChangelog) {
+                        AlertDialog(
+                            onDismissRequest = { showChangelog = false },
+                            title = { Text("What's New") },
+                            text = { 
+                                Text("Welcome to Dolo v1.0!\n\n" +
+                                     "- Playlist & Channel downloads\n" +
+                                     "- Secure Private Vault\n" +
+                                     "- Universal In-app Browser\n" +
+                                     "- Smart Content Search\n" +
+                                     "- Multi-connection aria2c engine") 
+                            },
+                            confirmButton = {
+                                Button(onClick = { showChangelog = false }) {
+                                    Text("Awesome!")
+                                }
+                            }
+                        )
                     }
                 }
             }
