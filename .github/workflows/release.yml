@@ -8,6 +8,8 @@ on:
 jobs:
   release:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
 
     steps:
     - uses: actions/checkout@v4
@@ -33,19 +35,18 @@ jobs:
       run: |
         echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 -d > release.jks
         APK_SIGNER=$(find $ANDROID_SDK_ROOT/build-tools -name apksigner | sort -r | head -1)
-        for apk in app/build/outputs/apk/release/*.apk; do
-          if [[ $apk != *"unsigned"* ]]; then
-            $APK_SIGNER sign --ks release.jks \
-              --ks-key-alias "${{ secrets.KEY_ALIAS }}" \
-              --ks-pass pass:"${{ secrets.KEYSTORE_PASSWORD }}" \
-              --key-pass pass:"${{ secrets.KEY_PASSWORD }}" \
-              --out "${apk%.apk}-signed.apk" "$apk"
-          fi
-        done
+        # Find the APK produced by Gradle
+        RAW_APK=$(ls app/build/outputs/apk/release/*.apk | head -n 1)
+        # Sign it and rename to a clean filename
+        $APK_SIGNER sign --ks release.jks \
+          --ks-key-alias "${{ secrets.KEY_ALIAS }}" \
+          --ks-pass pass:"${{ secrets.KEYSTORE_PASSWORD }}" \
+          --key-pass pass:"${{ secrets.KEY_PASSWORD }}" \
+          --out "app/build/outputs/apk/release/Dolo-Signed.apk" "$RAW_APK"
 
     - name: Create Release
       uses: softprops/action-gh-release@v2
       with:
-        files: app/build/outputs/apk/release/*-signed.apk
+        files: app/build/outputs/apk/release/Dolo-Signed.apk
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
