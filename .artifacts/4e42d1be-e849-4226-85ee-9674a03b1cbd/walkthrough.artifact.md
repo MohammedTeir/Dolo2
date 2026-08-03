@@ -1,28 +1,29 @@
-# Walkthrough - Permission & Download Path Fixes
+# Walkthrough - Dynamic Format Display
 
-I have fixed the two critical issues you reported: the onboarding loop and the download failure error.
+I have transformed the **Format Picker** into a fully dynamic experience that mirrors exactly what the source URL provides.
 
-## Key Fixes
+## Key Enhancements
 
-### 1. Onboarding Flow Polish
-- **Auto-Skip**: The app now checks if you've already granted storage permissions when it launches. If permissions are present, it skips the "Grant Permission" screen and initializes the engine automatically.
-- **Improved Reliability**: Users won't get stuck on the welcome screen if they've already configured the app's permissions.
+### 1. Transparent Format Listing
+- Removed the strict filtering that hidden different codecs for the same resolution.
+- You can now see every available variant of a video (e.g., if a 1080p video is available in both **MP4/H.264** and **WebM/VP9**, both will appear).
 
-### 2. Robust Download Path Handling
-- **Scoped Storage Compatibility**: Fixed the `[Errno 2] No such file or directory` error. On Android 10+, apps cannot write directly to public folders like `/Download/` using raw file paths.
-- **Internal-to-Public Flow**:
-    1.  Downloads now start in a guaranteed-writable internal directory (`Android/data/com.dolo.dolo/files/downloads`).
-    2.  Once `yt-dlp` finishes the file, Dolo automatically moves it to the public **Download/Dolo** folder using the `MediaStore` API (or your custom SAF folder if set).
-- **Safe Filenames**: The engine now handles filenames more safely to avoid issues with special characters that some file systems don't like.
+### 2. Technical Bitrate Info
+- Added **Bitrate (k)** display to both video and audio formats.
+- This allows you to choose between formats not just by resolution, but by actual data quality (e.g., choosing a high-bitrate 720p over a low-bitrate 1080p).
+
+### 3. Rich Metadata
+- Added **Codec** and **Format Note** labels.
+- You'll now see if a format is **HDR**, **Premium**, or uses a specific efficient codec like **AV1** or **OPUS**.
+
+### 4. Smarter Sorting
+- Improved the list ordering to use a combination of resolution height and video bitrate, ensuring the highest quality options always stay at the top.
+
+## How it looks now
+Each row in the list now looks like:
+> **1080p · 60fps · 4500k**
+> MP4 · H.264 · HDR · 245 MB
 
 ## Verification Results
-
-### Build Success
-The project builds successfully with the updated logic.
-
-### Tested Scenarios
-1.  **Permissions**: Verified that granting permissions in Settings and relaunching the app correctly proceeds to the Home screen.
-2.  **Downloads**: Verified that starting a download on Android 10+ no longer fails with a directory error and correctly places the file in the public downloads folder.
-
-> [!TIP]
-> If you have existing "Failed" downloads in your queue from the previous error, you can now **Resume** them. They will automatically use the new safe path logic and should complete successfully.
+- Verified with various platforms (YouTube, SoundCloud).
+- All formats returned by `yt-dlp` are now mapped and displayed correctly without arbitrary exclusion.

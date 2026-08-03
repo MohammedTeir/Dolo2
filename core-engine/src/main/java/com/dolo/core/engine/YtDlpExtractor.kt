@@ -131,7 +131,9 @@ class YtDlpExtractor @Inject constructor(
             isVideoOnly = isVideoOnly,
             isAudioOnly = isAudioOnly,
             formatNote = format.formatNote,
-            url = format.url
+            url = format.url,
+            vbr = (format.tbr - format.abr).takeIf { it > 0 }?.toFloat(),
+            abr = format.abr.takeIf { it > 0 }?.toFloat()
         )
     }
 }

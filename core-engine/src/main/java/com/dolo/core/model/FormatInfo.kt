@@ -11,5 +11,7 @@ data class FormatInfo(
     val isVideoOnly: Boolean = false,
     val isAudioOnly: Boolean = false,
     val formatNote: String? = null,
-    val url: String? = null
+    val url: String? = null,
+    val vbr: Float? = null,
+    val abr: Float? = null
 )

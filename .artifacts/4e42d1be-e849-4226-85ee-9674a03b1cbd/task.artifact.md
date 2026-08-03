@@ -1,9 +1,14 @@
-# Task List - Fix HTTP 403 & Download Stability
+# Task List - Dynamic Format Display
 
-- [ ] Core Engine Hardening
-    - [ ] Update `DownloadRequestBuilder.kt` with User-Agent and evasion flags
-    - [ ] Update `YtDlpExtractor.kt` with safety flags
-- [ ] UI Polish
-    - [ ] Add "Clear Engine Cache" to `EngineSettingsScreen.kt`
-- [ ] Verification
-    - [ ] Verify failed downloads can now resume and complete
+- [x] Update Engine Models
+    - [x] Add `abr` and `vbr` to `FormatInfo.kt`
+- [x] Update Extractor Logic
+    - [x] Map bitrates from `yt-dlp` response in `YtDlpExtractor.kt`
+- [x] Refactor Format Picker UI
+    - [x] Remove aggressive `distinctBy` filtering in `FormatPickerSheet.kt`
+    - [x] Show codec details for every format
+    - [x] Display bitrates (k) for better quality comparison
+    - [x] Include format notes (e.g., "HDR", "Premium") in the list
+- [x] Verification
+    - [x] Test with multi-codec videos (VP9/AV1/H.264)
+    - [x] Test with audio-only sources

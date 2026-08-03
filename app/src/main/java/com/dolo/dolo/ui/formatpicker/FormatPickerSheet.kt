@@ -160,9 +160,10 @@ fun FormatPickerSheet(
             }
 
             // Video formats list
-            val videoFormats = metadata.formats.filter { !it.isAudioOnly && it.resolution != null }
-                .sortedByDescending { extractHeight(it.resolution) }
-                .distinctBy { "${it.resolution}-${it.ext}" }
+            val videoFormats = metadata.formats.filter { !it.isAudioOnly }
+                .sortedByDescending { it: FormatInfo -> 
+                    (extractHeight(it.resolution)?.toFloat() ?: it.vbr ?: 0f)
+                }
 
             if (videoFormats.isNotEmpty()) {
                 item {
@@ -191,7 +192,7 @@ fun FormatPickerSheet(
 
             // Audio-only formats from extractor
             val audioFormats = metadata.formats.filter { it.isAudioOnly }
-                .sortedByDescending { it.fileSizeBytes }
+                .sortedByDescending { it.abr ?: it.fileSizeBytes.toFloat() }
 
             if (audioFormats.isNotEmpty()) {
                 item {
@@ -702,6 +703,15 @@ private fun FormatRow(
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
+                    
+                    val bitrate = if (isVideo) format.vbr else format.abr
+                    if (bitrate != null && bitrate > 0) {
+                        Text(
+                            text = " · ${bitrate.toInt()}k",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.secondary
+                        )
+                    }
                 }
 
                 Row {
@@ -717,6 +727,14 @@ private fun FormatRow(
                             text = " · $codec",
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                    
+                    if (format.formatNote != null && format.formatNote != format.resolution) {
+                        Text(
+                            text = " · ${format.formatNote}",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
                         )
                     }
                 }
@@ -772,11 +790,11 @@ private fun formatFileSize(bytes: Long): String {
     }
 }
 
-private fun extractHeight(resolution: String?): Int {
-    if (resolution == null) return 0
+private fun extractHeight(resolution: String?): Int? {
+    if (resolution == null) return null
     val matchWxH = Regex("""(\d+)x(\d+)""").find(resolution)
-    if (matchWxH != null) return matchWxH.groupValues[2].toIntOrNull() ?: 0
+    if (matchWxH != null) return matchWxH.groupValues[2].toIntOrNull()
     val matchP = Regex("""(\d+)p""").find(resolution)
-    if (matchP != null) return matchP.groupValues[1].toIntOrNull() ?: 0
-    return 0
+    if (matchP != null) return matchP.groupValues[1].toIntOrNull()
+    return null
 }
