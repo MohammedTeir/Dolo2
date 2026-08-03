@@ -29,7 +29,14 @@ object DownloadRequestBuilder {
         } else {
             val formatId = params.formatId
             if (!formatId.isNullOrBlank()) {
-                request.addOption("-f", formatId)
+                // If it looks like a numeric ID (yt-dlp specific) or a resolution, 
+                // ensure we append best audio so the user doesn't get a silent file.
+                val finalFormat = if (formatId.all { it.isDigit() } || formatId.endsWith("p")) {
+                    "$formatId+bestaudio/best"
+                } else {
+                    formatId
+                }
+                request.addOption("-f", finalFormat)
             }
         }
 

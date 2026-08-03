@@ -113,7 +113,7 @@ class YtDlpExtractor @Inject constructor(
     }
 
     private fun mapMetadata(videoInfo: VideoInfo, url: String, isPlaylist: Boolean = false): VideoMetadata {
-        val formats = videoInfo.formats?.map { mapFormat(it) } ?: emptyList()
+        val formats = videoInfo.formats?.map { mapFormat(it) }?.filter { it.formatId != "filtered_storyboard" } ?: emptyList()
         return VideoMetadata(
             id = videoInfo.id ?: "",
             title = videoInfo.title ?: videoInfo.fulltitle ?: "Unknown Title",
@@ -128,14 +128,27 @@ class YtDlpExtractor @Inject constructor(
     }
 
     private fun mapFormat(format: VideoFormat): FormatInfo {
-        val isAudioOnly = format.vcodec == "none" || format.vcodec == null
-        val isVideoOnly = format.acodec == "none" || format.acodec == null
+        val vcodec = format.vcodec ?: "none"
+        val acodec = format.acodec ?: "none"
+        
+        val isAudioOnly = vcodec == "none" && acodec != "none"
+        val isVideoOnly = acodec == "none" && vcodec != "none"
+        val isMerged = vcodec != "none" && acodec != "none"
+
+        // Filter out storyboards and non-media formats
+        val isStoryboard = format.formatNote?.contains("storyboard", ignoreCase = true) == true 
+                || format.format?.contains("storyboard", ignoreCase = true) == true
+                || format.ext == "mhtml"
+                || (vcodec == "none" && acodec == "none")
+        
+        if (isStoryboard) {
+            return FormatInfo(formatId = "filtered_storyboard", ext = "", resolution = null)
+        }
 
         val resolution = when {
             format.height > 0 && format.width > 0 -> "${format.width}x${format.height}"
             format.height > 0 -> "${format.height}p"
-            format.formatNote != null -> format.formatNote
-            else -> null
+            else -> format.formatNote
         }
 
         val fileSize = format.fileSize

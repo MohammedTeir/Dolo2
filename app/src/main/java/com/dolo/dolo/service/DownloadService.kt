@@ -208,6 +208,9 @@ class DownloadService : Service() {
     private suspend fun executeDownload(download: DownloadEntity) {
         val title = download.title ?: "Media Download"
         try {
+            // CLEANUP: Ensure any stale process with this ID is removed before starting
+            youtubeDL.destroyProcessById(download.id)
+            
             downloadDao.updateStatus(download.id, "DOWNLOADING")
             updateNotification(title = title, text = "Starting...", progress = 0f, downloadId = download.id)
 
@@ -240,12 +243,24 @@ class DownloadService : Service() {
 
             val request = DownloadRequestBuilder.buildRequest(params)
 
+            var lastReportedProgress = download.progress
+
             youtubeDL.execute(request, download.id) { progress, etaInSeconds, line ->
-                serviceScope.launch {
-                    val validProgress = if (progress < 0f) 0f else progress
-                    downloadDao.updateProgress(download.id, 0L, validProgress)
-                    val statusText = if (progress < 0f) "Downloading..." else "Downloading: ${validProgress.toInt()}%"
-                    updateNotification(title = title, text = statusText, progress = validProgress, downloadId = download.id)
+                // Only update if progress is valid and moving forward (or at least valid)
+                if (progress >= 0f) {
+                    serviceScope.launch {
+                        if (progress > lastReportedProgress || progress == 100f) {
+                            downloadDao.updateProgress(download.id, 0L, progress)
+                            lastReportedProgress = progress
+                        }
+                        val statusText = "Downloading: ${progress.toInt()}%"
+                        updateNotification(title = title, text = statusText, progress = progress, downloadId = download.id)
+                    }
+                } else {
+                    // Indeterminate progress, don't overwrite DB but update notification text
+                    serviceScope.launch {
+                        updateNotification(title = title, text = "Downloading...", progress = lastReportedProgress, downloadId = download.id)
+                    }
                 }
             }
 

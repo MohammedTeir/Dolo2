@@ -1,39 +1,32 @@
-# Walkthrough - Phase 8: Hardening & Release Prep
+# Walkthrough - Snaptube Style Format Picker
 
-I have completed the final phase of development, bringing Dolo to a stable v1.0 release with full feature parity with the [SPEC.md](file:///C:/Users/teirm/AndroidStudioProjects/Dolo2/SPEC.md).
+I have completely redesigned the **Format Picker** to match the organized, descriptive style of Snaptube.
 
-## Final Improvements
+## Key UI Improvements
 
-### 1. Professional Error Handling
-- **Friendly Messages**: Updated `YtDlpExtractor` to map complex technical errors to helpful advice. For example:
-    - "Private video" -> "Please add your cookies in Engine Settings."
-    - "Unsupported site" -> "Dolo might not support this platform yet."
-- **In-App Recovery**: Added a **Snackbar** on the Home screen that directs users to Settings if an extraction fails, providing a clear path to fix issues.
+### 1. Categorized Sections
+- **Music Section**: Shows clear options like "Fast" (M4A) and "High Quality" (MP3 320K) with estimated file sizes.
+- **Video Section**: Lists primary resolutions (360p, 480p, 720p, 1080p, etc.) with helpful descriptions like "High details for big screen".
 
-### 2. Notification Power-ups
-- **One-Tap Retry**: If a download fails (e.g., due to a temporary network drop), a **Retry** button now appears directly in the system notification.
-- **Automatic Cleanup**: Failure notifications now dismiss properly when the issue is resolved or manual action is taken.
+### 2. Modern Selection Experience
+- **Radio Buttons**: You can now select a format without it starting the download immediately.
+- **Primary Download Button**: A large, yellow "Download" button at the bottom (matching Snaptube's style) to confirm your choice.
+- **Size Estimation**: The app now calculates the estimated file size (MB/GB) for every option, including conversion formats, so you know exactly what to expect.
 
-### 3. URL History & Discovery
-- **Recent Links**: The Home screen now displays your last few successful links for quick re-downloading or access.
-- **Actual Search**: The Search tab is now fully functional, allowing you to find content on YouTube directly and start extraction with one tap.
+### 3. Progressive Disclosure
+- **"More formats" Toggle**: Technical streams and secondary codecs are now hidden behind a clean "More formats" row, keeping the interface simple for most users.
+- **Subtitles Row**: Subtitle selection is now integrated into a single, clean row that shows your current selection.
 
-### 4. Compliance & Legal
-- **Detailed Licenses**: Created a comprehensive **Licenses Screen** that credits all the amazing open-source projects used in Dolo (`yt-dlp`, `aria2c`, `ffmpeg`, etc.) as required by their GPL/LGPL licenses.
-- **Privacy Policy**: Added an in-app Privacy Policy to the About screen, explicitly stating that all data stays local to the device.
+### 4. Cleanup
+- **No More Storyboards**: "MHTML storyboard" entries are now filtered out completely, as they are not meant for downloading.
 
-### 5. UI Consistency & Polish
-- **Rich Vault**: Upgraded the Private Vault UI to match the main Library, including the Grid/List toggle and rich thumbnails.
-- **"What's New"**: Implemented a one-time welcome dialog that highlights the key features of the v1.0 release.
+## How to use
+1. Paste a link on the Home screen.
+2. The new sheet will appear.
+3. Select your desired quality in either the Music or Video section.
+4. Tap the large yellow **Download** button at the bottom.
 
-## Final Verification
-
-### Build & Stability
-- Performed a full build check. All components are correctly wired.
-- Verified that custom Save Locations (SAF) and Engine Settings are correctly respected by the background service.
-
-### RTL Support
-- All layouts use standard Compose Material3 components, ensuring perfect mirroring for RTL languages like Arabic and Hebrew.
-
-> [!IMPORTANT]
-> Dolo is now **Stable (v1.0)**. Every feature requested in the original specification has been implemented and tested for reliability.
+## Verification Results
+- **Build Success**: Verified that the new layout compiles and runs.
+- **Logic Check**: Confirmed that selecting a format and tapping download correctly triggers the engine with the right parameters.
+- **RTL Support**: The layout mirrors correctly for RTL languages.

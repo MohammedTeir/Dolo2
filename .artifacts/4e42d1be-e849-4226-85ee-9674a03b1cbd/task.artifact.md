@@ -1,19 +1,17 @@
-# Task List - Phase 8: Hardening & Release Prep
+# Task List - Snaptube Style Format Picker
 
-- [x] Specialized Error Handling
-    - [x] Update `YtDlpExtractor.kt` with friendly error mapping
-    - [x] Update `DownloadService.kt` with better error reporting
-- [x] Notification Enhancements
-    - [x] Add "Retry" action to failure notifications in `DownloadService.kt`
-- [x] UI Polish & Helpful Prompts
-    - [x] Add Snackbar with "Help" action to `HomeScreen.kt`
-    - [x] Add "Report Issue" to `FormatPickerSheet.kt`
-    - [x] Implement URL History UI
-    - [x] Finalize Search result UI
-- [x] Compliance & Final Touches
-    - [x] Expand `LicensesScreen.kt` with assets and missing libs
-    - [x] Add Privacy Policy dialog and Feedback intent to `AboutScreen.kt`
-    - [x] Implement "What's New" version check
+- [x] UI Structure Overhaul
+    - [x] Add `Music` and `Video` sections to `FormatPickerSheet`
+    - [x] Implement `More formats` expansion logic
+    - [x] Update `Subtitle` row to match Snaptube design
+- [x] Selection Logic
+    - [x] Implement radio button state for formats
+    - [x] Move download trigger to a bottom primary button
+    - [x] Add descriptions (e.g., "Best for mobile") to standard options
+- [x] Size Estimation
+    - [x] Add logic to calculate MB for conversion options (bitrate * duration)
+- [x] Refinement
+    - [x] Polish the `FormatRow` component to match the screenshots
 - [x] Verification
-    - [x] RTL Layout check
-    - [x] Clean release build test
+    - [x] Test selection and download of different formats
+    - [x] Verify "More formats" toggle works correctly
