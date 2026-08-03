@@ -29,18 +29,18 @@ jobs:
       run: ./gradlew assembleRelease
 
     - name: Sign Release APK
-      uses: r2da/android-sign-apk@v1
+      uses: r0adkll/sign-android-release@v1
+      id: sign_app
       with:
-        apk-path: app/build/outputs/apk/release/*.apk
-        keystore-base64: ${{ secrets.KEYSTORE_BASE64 }}
-        keystore-password: ${{ secrets.KEYSTORE_PASSWORD }}
-        key-alias: ${{ secrets.KEY_ALIAS }}
-        key-password: ${{ secrets.KEY_PASSWORD }}
-      continue-on-error: true
+        releaseDirectory: app/build/outputs/apk/release
+        signingKeyBase64: ${{ secrets.KEYSTORE_BASE64 }}
+        alias: ${{ secrets.KEY_ALIAS }}
+        keyStorePassword: ${{ secrets.KEYSTORE_PASSWORD }}
+        keyPassword: ${{ secrets.KEY_PASSWORD }}
 
     - name: Create Release
       uses: softprops/action-gh-release@v2
       with:
-        files: app/build/outputs/apk/release/*.apk
+        files: ${{ steps.sign_app.outputs.signedReleaseFile }}
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
