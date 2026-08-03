@@ -121,6 +121,17 @@ class DownloadService : Service() {
 
             if (toStartCount > 0) {
                 val queued = downloadDao.getDownloadsByStatus("QUEUED")
+                if (queued.isEmpty() && activeJobs.isEmpty() && downloading.isEmpty()) {
+                    // Nothing to do, no active jobs.
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+                        stopForeground(STOP_FOREGROUND_DETACH)
+                    } else {
+                        stopForeground(false)
+                    }
+                    stopSelf()
+                    return@launch
+                }
+                
                 queued.take(toStartCount).forEach { download ->
                     startDownload(download)
                 }
@@ -344,4 +355,16 @@ class DownloadService : Service() {
     }
 
     override fun onBind(intent: Intent?): IBinder? = null
+
+    override fun onTaskRemoved(rootIntent: Intent?) {
+        super.onTaskRemoved(rootIntent)
+        // If app is swiped away, cancel ongoing non-persistent work if needed
+        // But for a downloader, we usually want to keep it running unless it's a hard kill.
+        // If we want it gone on swipe:
+        if (activeJobs.isEmpty()) {
+            val manager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+            manager.cancel(NOTIFICATION_ID)
+            stopSelf()
+        }
+    }
 }

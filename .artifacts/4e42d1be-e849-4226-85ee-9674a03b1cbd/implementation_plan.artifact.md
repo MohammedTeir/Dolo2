@@ -1,42 +1,21 @@
-# Implementation Plan - Phase 8: Hardening & Release Prep
+# Implementation Plan - Notification & Service Lifecycle Fix
 
-Finalize the app for a stable release by implementing comprehensive error handling, ensuring license compliance, and polishing the user experience.
+Address the issue where the download notification persists indefinitely even after work is complete.
 
 ## Proposed Changes
 
-### [core-engine]
-
-#### [MODIFY] [YtDlpExtractor.kt](file:///C:/Users/teirm/AndroidStudioProjects/Dolo2/core-engine/src/main/java/com/dolo/core/engine/YtDlpExtractor.kt)
-- Add specialized error mapping:
-    - Detect "Unsupported URL" and return a user-friendly message.
-    - Detect "Private video" or "Age restricted" and suggest using Cookies.
-    - Handle network timeouts gracefully.
-
-#### [MODIFY] [DownloadService.kt](file:///C:/Users/teirm/AndroidStudioProjects/Dolo2/app/src/main/java/com/dolo/dolo/service/DownloadService.kt)
-- Improve error reporting in the notification and database.
-- Add "Retry" action directly to the notification if a download fails.
-
 ### [app]
 
-#### [MODIFY] [HomeScreen.kt](file:///C:/Users/teirm/AndroidStudioProjects/Dolo2/app/src/main/java/com/dolo/dolo/ui/home/HomeScreen.kt)
-- Show a **Snackbar** with a "Help" action when extraction fails, leading to the Engine Settings (to update yt-dlp or add cookies).
-
-#### [MODIFY] [LicensesScreen.kt](file:///C:/Users/teirm/AndroidStudioProjects/Dolo2/app/src/main/java/com/dolo/dolo/ui/settings/LicensesScreen.kt)
-- Add a section for "Third-party Assets" (icons, etc.).
-- Ensure every library mentioned in `libs.versions.toml` has a corresponding license entry.
-
-#### [MODIFY] [AboutScreen.kt](file:///C:/Users/teirm/AndroidStudioProjects/Dolo2/app/src/main/java/com/dolo/dolo/ui/settings/AboutScreen.kt)
-- Add a "Privacy Policy" button that opens a simple in-app dialog or a link to the repo.
-- Finalize the "Feedback" button to open an email intent.
-
-#### [MODIFY] [FormatPickerSheet.kt](file:///C:/Users/teirm/AndroidStudioProjects/Dolo2/app/src/main/java/com/dolo/dolo/ui/formatpicker/FormatPickerSheet.kt)
-- Add a "Report Issue" button if metadata extraction looks wrong.
+#### [MODIFY] [DownloadService.kt](file:///C:/Users/teirm/AndroidStudioProjects/Dolo2/app/src/main/java/com/dolo/dolo/service/DownloadService.kt)
+- **Automatic Shutdown**: Implement logic in `processQueue` to detect when the service is idle (no active jobs and empty queue).
+- **Foreground Transition**: Call `stopForeground(STOP_FOREGROUND_DETACH)` when all active downloads are done, making the notification dismissible.
+- **Service Termination**: Call `stopSelf()` when completely idle to free system resources.
+- **Task Removal**: Override `onTaskRemoved` to cancel notifications and stop processes if the user kills the app from recents.
 
 ## Verification Plan
 
 ### Manual Verification
-1.  **Error States**: Paste an invalid URL and verify the error message is clear and helpful.
-2.  **Privacy/Age Restricted**: Paste a private video link; verify the app suggests adding cookies.
-3.  **Licenses**: Open the Licenses screen and verify it is complete and professional.
-4.  **RTL Check**: Switch phone language to Arabic (or similar RTL) and verify layouts mirror correctly.
-5.  **Build**: Perform a clean `./gradlew assembleRelease` to ensure the app is ready for distribution.
+1.  **Single Download**: Complete one download. Verify the notification is either gone or easily swiped away immediately after.
+2.  **Batch Download**: Queue 3 videos. Verify the service stays active through all three and only terminates after the final one.
+3.  **Cancellation**: Cancel all downloads. Verify the notification clears.
+4.  **App Kill**: Swipe the app away from the task switcher. Verify the foreground notification doesn't get stuck.

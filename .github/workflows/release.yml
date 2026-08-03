@@ -29,18 +29,23 @@ jobs:
       run: ./gradlew assembleRelease
 
     - name: Sign Release APK
-      uses: r0adkll/sign-android-release@v1
       id: sign_app
-      with:
-        releaseDirectory: app/build/outputs/apk/release
-        signingKeyBase64: ${{ secrets.KEYSTORE_BASE64 }}
-        alias: ${{ secrets.KEY_ALIAS }}
-        keyStorePassword: ${{ secrets.KEYSTORE_PASSWORD }}
-        keyPassword: ${{ secrets.KEY_PASSWORD }}
+      run: |
+        echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 -d > release.jks
+        APK_SIGNER=$(find $ANDROID_SDK_ROOT/build-tools -name apksigner | sort -r | head -1)
+        for apk in app/build/outputs/apk/release/*.apk; do
+          if [[ $apk != *"unsigned"* ]]; then
+            $APK_SIGNER sign --ks release.jks \
+              --ks-key-alias "${{ secrets.KEY_ALIAS }}" \
+              --ks-pass pass:"${{ secrets.KEYSTORE_PASSWORD }}" \
+              --key-pass pass:"${{ secrets.KEY_PASSWORD }}" \
+              --out "${apk%.apk}-signed.apk" "$apk"
+          fi
+        done
 
     - name: Create Release
       uses: softprops/action-gh-release@v2
       with:
-        files: ${{ steps.sign_app.outputs.signedReleaseFile }}
+        files: app/build/outputs/apk/release/*-signed.apk
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
